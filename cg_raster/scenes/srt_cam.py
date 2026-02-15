@@ -200,4 +200,5 @@ class SceneRasterTriangleCamera(core.IScene):
             event : spy.KeyboardEvent
     ):
         if self.input:
-            self.input.update_keyboard(event)
+            if event:
+                self.input.update_keyboard(event)
