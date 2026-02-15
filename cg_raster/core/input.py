@@ -83,7 +83,8 @@ class Input:
     def update(self):
         if self.bindings:
             for bind_name, state in self.bindings.items():
-                state.value = 0.0
+                if state.axis_type == eAxisType.kAbsolute:
+                    state.value = 0.0
 
     def load_bindings(self, configname : str):
         pass
