@@ -95,11 +95,11 @@ class SceneRasterTriangleCamera(core.IScene):
             self,
             dt : spy.math.float1
         ):
-        if self.input:
-            self.input.update()
-
         if self.camera:
             self.camera.update(dt)
+            
+        if self.input:
+            self.input.update()
 
     def _render(
             self
