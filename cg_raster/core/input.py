@@ -3,7 +3,7 @@ import configparser
 from dataclasses import dataclass
 from enum import Enum, IntFlag, auto
 
-class eEventState(Enum):
+class eInputEventState(Enum):
     kPressed = 1
     kReleased = 2
     kHolding = 3
@@ -13,12 +13,12 @@ class eEventState(Enum):
 # determine how we store data from input if absolute 
 # it means we each frame set value to 0.0 
 # otherwise we each frame add to current value without resetting it to 0.0
-class eAxisType(Enum):
+class eInputAxisType(Enum):
     kAbsolute = 1,
     kRelative = 2,
     kNone = -1
 
-class eDeviceType(IntFlag):
+class eInputDeviceType(IntFlag):
     kMouse = auto(),
     kKeyboard = auto(),
     kJoy = auto(),
@@ -29,11 +29,11 @@ class InputBindingState:
     events : list
     value : spy.math.float1
     value_prev : spy.math.float1
-    axis_type : eAxisType
-    device_type : eDeviceType
-    state : eEventState
+    axis_type : eInputAxisType
+    device_type : eInputDeviceType
+    state : eInputEventState
 
-class eBindingsType(Enum):
+class eInputBindingsType(Enum):
     kMoveForward=auto(),
     kMoveBackward=auto(),
     kMoveLeft=auto(),
@@ -48,60 +48,60 @@ class Input:
     def __init__(self):
         # defaults
         self.bindings = {
-            self.convert_bindings_to_str(eBindingsType.kMoveForward) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kMoveForward) : InputBindingState(
                 events=[spy.KeyCode.w],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
-            self.convert_bindings_to_str(eBindingsType.kMoveBackward) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kMoveBackward) : InputBindingState(
                 events=[spy.KeyCode.s],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
-            self.convert_bindings_to_str(eBindingsType.kMoveLeft) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kMoveLeft) : InputBindingState(
                 events=[spy.KeyCode.a],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
-            self.convert_bindings_to_str(eBindingsType.kMoveRight) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kMoveRight) : InputBindingState(
                 events=[spy.KeyCode.d],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
-            self.convert_bindings_to_str(eBindingsType.kCamLookPitch) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kCamLookPitch) : InputBindingState(
                 events=[spy.MouseEventType.move],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
-            self.convert_bindings_to_str(eBindingsType.kCamLookYaw) : InputBindingState(
+            self.convert_bindings_to_str(eInputBindingsType.kCamLookYaw) : InputBindingState(
                 events=[spy.MouseEventType.move],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eAxisType.kAbsolute,
-                device_type=eDeviceType.kNone,
-                state=eEventState.kNone
+                axis_type=eInputAxisType.kAbsolute,
+                device_type=eInputDeviceType.kNone,
+                state=eInputEventState.kNone
             ),
         }
 
         self._init_bindings(self.bindings)
 
         for bind_name, state in self.bindings.items():
-            assert state.device_type != eDeviceType.kNone, 'Failed to initialize your bindings due to incorrect device type deduction based on events fields'
+            assert state.device_type != eInputDeviceType.kNone, 'Failed to initialize your bindings due to incorrect device type deduction based on events fields'
     
 
     def _init_bindings(self, bindings):
@@ -111,24 +111,24 @@ class Input:
                     for event in state.events:
                         if event:
                             if type(event) is spy.KeyCode:
-                                state.device_type |= eDeviceType.kKeyboard
+                                state.device_type |= eInputDeviceType.kKeyboard
 
                             if type(event) is spy.MouseEventType:
-                                state.device_type |= eDeviceType.kMouse
+                                state.device_type |= eInputDeviceType.kMouse
 
-    def convert_bindings_to_str(self, binding_type : eBindingsType) -> str:
+    def convert_bindings_to_str(self, binding_type : eInputBindingsType) -> str:
         match binding_type:
-            case eBindingsType.kMoveForward:
+            case eInputBindingsType.kMoveForward:
                 return 'MOVE_FORWARD'
-            case eBindingsType.kMoveBackward:
+            case eInputBindingsType.kMoveBackward:
                 return 'MOVE_BACKWARD'
-            case eBindingsType.kMoveLeft:
+            case eInputBindingsType.kMoveLeft:
                 return 'MOVE_LEFT'
-            case eBindingsType.kMoveRight:
+            case eInputBindingsType.kMoveRight:
                 return 'MOVE_RIGHT'
-            case eBindingsType.kCamLookPitch:
+            case eInputBindingsType.kCamLookPitch:
                 return 'CAM_LOOK_PITCH'
-            case eBindingsType.kCamLookYaw:
+            case eInputBindingsType.kCamLookYaw:
                 return 'CAM_LOOK_YAW'
             case _:
                 return 'BINDING_UNKNOWN'
@@ -150,12 +150,12 @@ class Input:
     ):
         global CONST_CAM_PITCH
         global CONST_CAM_YAW
-        
+
         if CONST_CAM_YAW==None:
-            CONST_CAM_YAW = self.convert_bindings_to_str(eBindingsType.kCamLookYaw)
+            CONST_CAM_YAW = self.convert_bindings_to_str(eInputBindingsType.kCamLookYaw)
 
         if CONST_CAM_PITCH==None:
-            CONST_CAM_PITCH = self.convert_bindings_to_str(eBindingsType.kCamLookPitch)
+            CONST_CAM_PITCH = self.convert_bindings_to_str(eInputBindingsType.kCamLookPitch)
 
         if self.bindings:
             for bind_name, state in self.bindings.items():
@@ -179,7 +179,7 @@ class Input:
 
     def get_binding_state(
             self,
-            binding_type : eBindingsType
+            binding_type : eInputBindingsType
     ) -> InputBindingState:
         if self.bindings:
             if self.bindings.get(self.convert_bindings_to_str(binding_type)):
@@ -190,7 +190,7 @@ class Input:
     def update(self):
         if self.bindings:
             for bind_name, state in self.bindings.items():
-                if state.axis_type == eAxisType.kAbsolute:
+                if state.axis_type == eInputAxisType.kAbsolute:
                     state.value = 0.0
 
     def load_bindings(self, configname : str):
