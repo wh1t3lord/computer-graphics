@@ -1,3 +1,5 @@
+# Author: wh1t3lord
+
 import core
 
 import slangpy as spy
@@ -42,7 +44,8 @@ class SceneRasterEmpty(core.IScene):
 
 
     def _update(
-            self
+            self,
+            dt : spy.math.float1
         ):
         pass
 

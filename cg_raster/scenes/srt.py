@@ -1,3 +1,5 @@
+# Author: wh1t3lord
+
 import core
 import random
 import slangpy as spy
@@ -72,7 +74,8 @@ class SceneRasterTriangle(core.IScene):
 
 
     def _update(
-            self
+            self,
+            dt : spy.math.float1
         ):
         pass
 

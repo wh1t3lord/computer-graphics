@@ -1,3 +1,5 @@
+# Author: wh1t3lord
+
 import core
 import random
 import slangpy as spy
@@ -90,13 +92,14 @@ class SceneRasterTriangleCamera(core.IScene):
 
 
     def _update(
-            self
+            self,
+            dt : spy.math.float1
         ):
         if self.input:
             self.input.update()
 
         if self.camera:
-            self.camera.update()
+            self.camera.update(dt)
 
     def _render(
             self
@@ -150,6 +153,14 @@ class SceneRasterTriangleCamera(core.IScene):
     def _shutdown(
             self
         ):
+       if self.input:
+           del self.input
+           self.input = None
+
+       if self.camera:
+           del self.camera
+           self.camera = None
+
        # we should destroy our resources
        if self.device:
            # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU

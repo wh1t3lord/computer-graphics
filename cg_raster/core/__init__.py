@@ -30,8 +30,11 @@ class IScene:
             shaders_path
         )
 
-    def update(self):
-        self._update()
+    def update(
+            self, 
+            dt : spy.math.float1
+    ):
+        self._update(dt)
 
     def render(self):
         self._render()

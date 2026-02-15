@@ -1,6 +1,9 @@
+# Author: wh1t3lord
+
 import slangpy as spy
 from pathlib import Path
 import scenes
+import time
 
 
 DIR_ROOT = Path(__file__).parent.parent
@@ -21,6 +24,9 @@ class App:
         self.current_scene : scenes.IScene = None
         self.is_need_to_switch_scenes : bool = False
         self.current_scene_name = 'empty'
+        self.prev_time = time.perf_counter()
+        self.delta_time = 0.0
+
         self.__register_scenes()
         self.__init()
 
@@ -172,9 +178,11 @@ class App:
                 self.is_need_to_switch_scenes = False
                 print('scene switched!')
 
-
+            current_time = time.perf_counter()
+            self.delta_time = current_time - self.prev_time
+            self.prev_time = current_time
             
-            self.current_scene.update()
+            self.current_scene.update(dt=self.delta_time)
             self.current_scene.render()
 
     def shutdown(self):
