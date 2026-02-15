@@ -63,7 +63,10 @@ class SceneRasterTriangleCamera(core.IScene):
                 label="index_buffer",
                 data=indices,
             )
-            
+
+            # let's create our camera based on euler rotations
+            self.camera = core.Camera()
+            self.input = core.Input()
 
             if window:
                 self.swapchain = self.device.create_surface(window)
@@ -89,7 +92,11 @@ class SceneRasterTriangleCamera(core.IScene):
     def _update(
             self
         ):
-        pass
+        if self.input:
+            self.input.update()
+
+        if self.camera:
+            self.camera.update()
 
     def _render(
             self
@@ -173,10 +180,13 @@ class SceneRasterTriangleCamera(core.IScene):
             self,
             event : spy.MouseEvent
         ):
-        pass
+        if self.input:
+            if event:
+                self.input.update_mouse(event)
 
     def _on_keyboard_event(
             self,
             event : spy.KeyboardEvent
     ):
-        pass
+        if self.input:
+            self.input.update_keyboard(event)

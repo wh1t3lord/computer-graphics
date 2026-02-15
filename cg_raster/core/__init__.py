@@ -3,6 +3,7 @@ import slangpy as spy
 from pathlib import Path
 
 from core.camera import Camera
+from core.input import Input
 
 class RenderingType(Enum):
     FORWARD = 0

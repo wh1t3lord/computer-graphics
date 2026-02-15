@@ -5,13 +5,17 @@ This is my practice related to AI & Computer Graphics. This repository is for ed
 ## Usage
 
 Requirements:
-- Python >= 3.9
+- Python >= 3.11
 
 Follow these steps in following order:
 
 1) git clone https://github.com/wh1t3lord/ai.git
 2) pip install requirements.txt
 3) now choose demo and run using main.py files that store in each top level subfolders (cg_raster; cg_rtx; cg_neural)
+
+Or you can do this steps as in GIF:
+
+
 
 ## Overview
 
