@@ -4,6 +4,7 @@ import slangpy as spy
 from pathlib import Path
 import scenes
 import time
+from screeninfo import get_monitors
 
 
 DIR_ROOT = Path(__file__).parent.parent
@@ -93,9 +94,22 @@ class App:
                 self.current_scene.on_keyboard_event(event)
 
     def __init(self):
+        monitors = get_monitors()
+        monitor_primary = monitors[0]
+        screen_width = monitor_primary.width
+        screen_height = monitor_primary.height
+
+        print(f'User current dims: width={screen_width} height={screen_height}')
+
+        if screen_width < 0:
+            screen_width = 640
+
+        if screen_height < 0:
+            screen_height = 480
+
         self.window = spy.Window(
-            width=640,
-            height=480,
+            width=screen_width,
+            height=screen_height,
             title="",
             resizable=True
         )
