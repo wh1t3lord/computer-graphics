@@ -70,6 +70,9 @@ class SceneRasterTriangleCamera(core.IScene):
             self.camera = core.Camera()
             self.input = core.Input()
 
+            self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
+            self.binding_cam_yaw = self.input.get_binding_state(core.eInputBindingsType.kCamLookYaw)
+
             if window:
                 self.swapchain = self.device.create_surface(window)
                 self.swapchain.configure(width=window.width,height=window.height)
@@ -96,8 +99,15 @@ class SceneRasterTriangleCamera(core.IScene):
             dt : spy.math.float1
         ):
         if self.camera:
+
+            if self.binding_cam_pitch:
+                self.camera.pitch += self.binding_cam_pitch.value * dt
+
+            if self.binding_cam_yaw:
+                self.camera.yaw += self.binding_cam_yaw.value * dt
+
             self.camera.update(dt)
-            
+
         if self.input:
             self.input.update()
 
