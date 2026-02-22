@@ -23,14 +23,14 @@ class SceneRasterTriangleCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster_triangle' / '2d_color.slang'
+            shader_name = shaders_path / 'raster_triangle' / '2d_camera.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             input_layout = self.device.create_input_layout(
                 input_elements=[
                     {
                         "semantic_name": "POSITION",
                         "semantic_index": 0,
-                        "format": spy.Format.rg32_float,
+                        "format": spy.Format.rgb32_float,
                     }
                 ],
                 vertex_streams=[{"stride": 8}],
@@ -43,7 +43,11 @@ class SceneRasterTriangleCamera(core.IScene):
             )
 
             vertices = np.array(
-                [-1, -1, 1, -1, 0, 1], 
+                [
+                    -1, -1, 0, # bottom left
+                    1, -1, 0,  # bottom right
+                    0, 1, 0    # center top
+                ], 
                 dtype=np.float32
             )
 
@@ -53,6 +57,11 @@ class SceneRasterTriangleCamera(core.IScene):
             )
 
             self.shader_data_triangle_color = np.array([1,1,1], dtype=np.float32)
+            self.vTrianglePosition : spy.math.float3 = spy.math.float3(0.0, 0.0, 0.0)
+            self.mTriangleOrientation : spy.math.float4x4 = spy.math.float4x4()
+            self.mTriangleOrientation = self.mTriangleOrientation.identity()
+
+            self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
             self.vertex_buffer = device.create_buffer(
                 usage=spy.BufferUsage.vertex_buffer,
@@ -66,9 +75,11 @@ class SceneRasterTriangleCamera(core.IScene):
                 data=indices,
             )
 
-            # let's create our camera based on euler rotations
-            self.camera = core.Camera()
+
             self.input = core.Input()
+
+            # let's create our camera based on euler rotations
+            self.camera = core.Camera(self.input)
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
             self.binding_cam_yaw = self.input.get_binding_state(core.eInputBindingsType.kCamLookYaw)
@@ -90,6 +101,16 @@ class SceneRasterTriangleCamera(core.IScene):
                         1.0
                     )
 
+                    self.ui_shader_data_triangle_position = spy.ui.DragFloat3(
+                        ui_main_window,
+                        'triangle position',
+                        self.vTrianglePosition,
+                        lambda value: setattr(self, 'vTrianglePosition', value),
+                        0.01,
+                        -100.0,
+                        100.0
+                    )
+
                     self.ui_main_window = ui_main_window
 
 
@@ -99,13 +120,6 @@ class SceneRasterTriangleCamera(core.IScene):
             dt : spy.math.float1
         ):
         if self.camera:
-
-            if self.binding_cam_pitch:
-                self.camera.pitch += self.binding_cam_pitch.value * dt
-
-            if self.binding_cam_yaw:
-                self.camera.yaw += self.binding_cam_yaw.value * dt
-
             self.camera.update(dt)
 
         if self.input:
@@ -132,9 +146,26 @@ class SceneRasterTriangleCamera(core.IScene):
                         {"view": render_target_view}
                     ]
                 }) as rp:
+                
                 shader_object = rp.bind_pipeline(self.pipeline)
+
                 cursor = spy.ShaderCursor(shader_object)
                 cursor.g_TriangleColor = self.shader_data_triangle_color
+
+                self.mTriangleOrientation = self.mTriangleOrientation.identity()
+                self.mTriangleOrientation = spy.math.translate(self.mTriangleOrientation, self.vTrianglePosition)
+
+                self.mProjection = spy.math.perspective(
+                    spy.math.radians(self.camera.fov),
+                    texture_surface.width / texture_surface.height,
+                    0.1,
+                    100.0
+                )
+
+                cursor.g_mModel = self.mTriangleOrientation
+                cursor.g_mView = self.camera.mView
+                cursor.g_mProjection = self.mProjection
+
 
                 rp.set_render_state(
                         {
@@ -183,6 +214,7 @@ class SceneRasterTriangleCamera(core.IScene):
 
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_color)
+           self.ui_main_window.remove_child(self.ui_shader_data_triangle_position)
 
     def _on_resize(
             self,

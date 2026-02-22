@@ -1,7 +1,7 @@
 
 struct IN_VERTEX
 {
-    float2 pos : POSITION;
+    float3 pos : POSITION;
 }
 
 struct OUT_VERTEX
@@ -16,13 +16,18 @@ struct OUT_PIXEL
 }
 
 uniform float3 g_TriangleColor;
+uniform float4x4 g_mModel;
+uniform float4x4 g_mView;
+uniform float4x4 g_mProjection;
 
 [shader("vertex")]
 OUT_VERTEX mainVertex(IN_VERTEX in_args)
 {
     OUT_VERTEX result;
     result.color = g_TriangleColor;
-    result.pos = float4(in_args.pos.x, in_args.pos.y, 0.0, 1.0);
+    result.pos = mul(float4(in_args.pos, 1.0), g_mModel);
+    result.pos = mul(result.pos, g_mView);
+    result.pos = mul(result.pos, g_mProjection);
 
     return result;
 }

@@ -141,6 +141,11 @@ class Input:
             for bind_name, state in self.bindings.items():
                 if event.key in state.events and event.is_key_press():
                     state.value = 1.0
+                    state.state = eInputEventState.kPressed
+                elif event.key in state.events and event.is_key_repeat():
+                    state.state = eInputEventState.kHolding
+                elif event.key in state.events and event.is_key_release():
+                    state.state = eInputEventState.kReleased
 
     # obviously there's lazy fat expernsive code and it should be optimized due to input being but, but... 
     # we program in python and generally it is only for demo so some little laziness might exist for fast 'iterationable' development
@@ -163,9 +168,12 @@ class Input:
                     if bind_name == CONST_CAM_PITCH:
                         state.value = event.pos.y - state.value_prev
                         state.value_prev = event.pos.y
+                        state.state = eInputEventState.kMoving
+
                     elif bind_name == CONST_CAM_YAW:
                         state.value = event.pos.x - state.value_prev
                         state.value_prev = event.pos.x
+                        state.state = eInputEventState.kMoving
 
     def get_binding_state(
       self,
@@ -190,8 +198,9 @@ class Input:
     def update(self):
         if self.bindings:
             for bind_name, state in self.bindings.items():
-                if state.axis_type == eInputAxisType.kAbsolute:
+                if state.axis_type == eInputAxisType.kAbsolute and (state.state == eInputEventState.kReleased or state.state == eInputEventState.kMoving):
                     state.value = 0.0
+                    state.state = eInputEventState.kNone
 
     def load_bindings(self, configname : str):
         pass
