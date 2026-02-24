@@ -8,7 +8,7 @@ import numpy as np
 
 class SceneRasterTriangleColor(core.IScene):
     def __init__(self):
-        pass
+        super().__init__()
 
     def _init(
             self,

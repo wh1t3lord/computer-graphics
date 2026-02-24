@@ -53,32 +53,30 @@ class Camera:
         self.vFront[1] = spy.math.sin(spy.math.radians(self.pitch))
         self.vFront[2] = spy.math.sin(spy.math.radians(self.yaw)) * spy.math.cos(spy.math.radians(self.pitch))
 
-        self.vFront = self.vFront / np.linalg.norm(self.vFront)
+        self.vFront[:3] = self.vFront[:3] / np.linalg.norm(self.vFront[:3])
 
-        self.mView[2] = np.cross(self.vFront, np.array([0.0, 1.0, 0.0, 1.0], dtype=np.float32))
-        self.mView[2] = self.mView[2] / np.linalg.norm(self.mView[2])
-        self.mView[1] = np.cross(self.mView[2], self.vFront)
-        self.mView[1] = self.mView[1] / np.linalg.norm(self.mView[1])
+        self.mView[2][:3] = np.cross(self.vFront[:3], np.array([0.0, 1.0, 0.0], dtype=np.float32))
+        self.mView[2][:3] = self.mView[2][:3] / np.linalg.norm(self.mView[2][:3])
+        self.mView[1][:3] = np.cross(self.mView[2][:3], self.vFront[:3])
+        self.mView[1][:3] = self.mView[1][:3] / np.linalg.norm(self.mView[1][:3])
 
         self.vPosition = self.mView[3]
 
         if self.binding_movement_forward:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.vFront * dt
+                self.vPosition += self.vFront[:3] * dt
 
         if self.binding_movement_backward:
             if self.binding_movement_backward.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.vFront * dt
+                self.vPosition -= self.vFront[:3] * dt
 
         if self.binding_movement_right:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.mView[2] * dt
+                self.vPosition -= self.mView[2][:3] * dt
 
         if self.binding_movement_left:
             if self.binding_movement_left.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.mView[2] * dt
-
-        self.vPosition.w = 1.0
+                self.vPosition += self.mView[2][:3] * dt
 
 
     def print_current_data(self):

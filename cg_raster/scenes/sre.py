@@ -7,7 +7,7 @@ from pathlib import Path
 
 class SceneRasterEmpty(core.IScene):
     def __init__(self):
-        pass
+        super().__init__()
 
     def _init(
             self,

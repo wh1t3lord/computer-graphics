@@ -4,6 +4,7 @@ import slangpy as spy
 from pathlib import Path
 import scenes
 import time
+import core
 from screeninfo import get_monitors
 
 
@@ -27,6 +28,8 @@ class App:
         self.current_scene_name = 'empty'
         self.prev_time = time.perf_counter()
         self.delta_time = 0.0
+
+        core.g_Settings.enable_renderdoc_capture = True
 
         self.__register_scenes()
         self.__init()
