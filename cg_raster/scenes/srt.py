@@ -22,7 +22,7 @@ class SceneRasterTriangle(core.IScene):
 
         self.device = device
 
-        if self.device:
+        if self.device != None:
             shader_name = shaders_path / 'raster_triangle' / '2d.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             input_layout = self.device.create_input_layout(
@@ -65,11 +65,12 @@ class SceneRasterTriangle(core.IScene):
             )
             
 
-            if window:
+            if window != None:
                 self.swapchain = self.device.create_surface(window)
                 self.swapchain.configure(width=window.width,height=window.height)
 
-                self.ui = ui
+        self.ui = ui
+        self.ui_main_window = ui_main_window
 
 
 

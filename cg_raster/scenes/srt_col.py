@@ -9,6 +9,7 @@ import numpy as np
 class SceneRasterTriangleColor(core.IScene):
     def __init__(self):
         super().__init__()
+        self.ui_shader_data_triangle_color = None
 
     def _init(
             self,
@@ -18,11 +19,14 @@ class SceneRasterTriangleColor(core.IScene):
             ui_main_window : spy.ui.Window,
             shaders_path : Path
         ):
+        if ui_main_window != None and self.ui_shader_data_triangle_color != None:
+            ui_main_window.add_child(self.ui_shader_data_triangle_color)
+
         print(f'{self.__class__.__name__}: init called')
 
         self.device = device
 
-        if self.device:
+        if self.device != None:
             shader_name = shaders_path / 'raster_triangle' / '2d_color.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             input_layout = self.device.create_input_layout(
@@ -71,21 +75,20 @@ class SceneRasterTriangleColor(core.IScene):
                 self.swapchain = self.device.create_surface(window)
                 self.swapchain.configure(width=window.width,height=window.height)
 
-                self.ui = ui
+        self.ui = ui
 
-                if ui_main_window:
-                    self.ui_shader_data_triangle_color = spy.ui.DragFloat3(
-                        ui_main_window,
-                        'triangle color',
-                        self.shader_data_triangle_color,
-                        lambda value: setattr(self, 'shader_data_triangle_color', value),
-                        0.01,
-                        0.0,
-                        1.0
-                    )
+        if ui_main_window != None and self.ui_shader_data_triangle_color == None:
+            self.ui_shader_data_triangle_color = spy.ui.DragFloat3(
+                ui_main_window,
+                'triangle color',
+                self.shader_data_triangle_color,
+                lambda value: setattr(self, 'shader_data_triangle_color', value),
+                0.01,
+                0.0,
+                1.0
+            )
 
-                    self.ui_main_window = ui_main_window
-
+            self.ui_main_window = ui_main_window
 
 
     def _update(
@@ -147,7 +150,7 @@ class SceneRasterTriangleColor(core.IScene):
             self
         ):
        # we should destroy our resources
-       if self.device:
+       if self.device != None:
            # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU
            self.device.wait()
            self.swapchain.unconfigure()
@@ -156,7 +159,7 @@ class SceneRasterTriangleColor(core.IScene):
            del self.vertex_buffer
            del self.index_buffer
 
-       if self.ui_main_window:
+       if self.ui_main_window != None:
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_color)
 
     def _on_resize(
@@ -164,7 +167,7 @@ class SceneRasterTriangleColor(core.IScene):
             width : int,
             height : int
         ):
-        if self.device:
+        if self.device != None:
             self.device.wait()
 
         if width > 0 and height > 0:

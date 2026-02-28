@@ -9,6 +9,8 @@ import numpy as np
 class SceneRasterTriangleCamera(core.IScene):
     def __init__(self):
         super().__init__()
+        self.ui_shader_data_triangle_color = None
+        self.ui_shader_data_triangle_position = None
 
     def _init(
             self,
@@ -18,6 +20,10 @@ class SceneRasterTriangleCamera(core.IScene):
             ui_main_window : spy.ui.Window,
             shaders_path : Path
         ):
+        if ui_main_window != None and self.ui_shader_data_triangle_color != None and self.ui_shader_data_triangle_position != None:
+            ui_main_window.add_child(self.ui_shader_data_triangle_color)
+            ui_main_window.add_child(self.ui_shader_data_triangle_position)
+
         print(f'{self.__class__.__name__}: init called')
 
         self.device = device
@@ -33,7 +39,7 @@ class SceneRasterTriangleCamera(core.IScene):
                         "format": spy.Format.rgb32_float,
                     }
                 ],
-                vertex_streams=[{"stride": 8}],
+                vertex_streams=[{"stride": 12}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
@@ -57,9 +63,12 @@ class SceneRasterTriangleCamera(core.IScene):
             )
 
             self.shader_data_triangle_color = np.array([1,1,1], dtype=np.float32)
-            self.vTrianglePosition : spy.math.float3 = spy.math.float3(0.0, 0.0, 0.0)
-            self.mTriangleOrientation : spy.math.float4x4 = spy.math.float4x4()
-            self.mTriangleOrientation = self.mTriangleOrientation.identity()
+            self.vTrianglePosition = np.array([0,0,0], dtype=np.float32)
+            self.mTriangleOrientation = np.identity(4, dtype=np.float32)
+            self.mTriangleOrientation[0,3]=1.0
+            self.mTriangleOrientation[1,3]=1.0
+            self.mTriangleOrientation[2,3]=1.0
+            self.mTriangleOrientation[3,3]=1.0
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
@@ -84,13 +93,13 @@ class SceneRasterTriangleCamera(core.IScene):
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
             self.binding_cam_yaw = self.input.get_binding_state(core.eInputBindingsType.kCamLookYaw)
 
-            if window:
+            if window != None:
                 self.swapchain = self.device.create_surface(window)
                 self.swapchain.configure(width=window.width,height=window.height)
 
                 self.ui = ui
 
-                if ui_main_window:
+            if ui_main_window != None and self.ui_shader_data_triangle_position == None and self.ui_shader_data_triangle_color == None:
                     self.ui_shader_data_triangle_color = spy.ui.DragFloat3(
                         ui_main_window,
                         'triangle color',
@@ -152,8 +161,12 @@ class SceneRasterTriangleCamera(core.IScene):
                 cursor = spy.ShaderCursor(shader_object)
                 cursor.g_TriangleColor = self.shader_data_triangle_color
 
-                self.mTriangleOrientation = self.mTriangleOrientation.identity()
-                self.mTriangleOrientation = spy.math.translate(self.mTriangleOrientation, self.vTrianglePosition)
+           #     self.mTriangleOrientation = self.mTriangleOrientation.identity()
+           #     self.mTriangleOrientation = spy.math.translate(self.mTriangleOrientation, self.vTrianglePosition)
+
+                self.mTriangleOrientation[3,0] = self.vTrianglePosition[0]
+                self.mTriangleOrientation[3,1] = self.vTrianglePosition[1]
+                self.mTriangleOrientation[3,2] = self.vTrianglePosition[2]
 
                 self.mProjection = spy.math.perspective(
                     spy.math.radians(self.camera.fov),

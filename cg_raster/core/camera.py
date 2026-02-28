@@ -16,10 +16,6 @@ class Camera:
         self.pitch_limit_down : np.float32 = spy.math.radians(-89.0)
 
         self.mView = np.identity(4, dtype=np.float32)
-
-        self.mView[0, 3] = 1.0
-        self.mView[1, 3] = 1.0
-        self.mView[2, 3] = 1.0
         self.mView[3, 3] = 1.0
 
         self.binding_movement_forward = input.get_binding_state(core.input.eInputBindingsType.kMoveForward)

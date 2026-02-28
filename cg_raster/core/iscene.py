@@ -23,8 +23,6 @@ class IScene:
             if _g_render_doc == None:
                 _g_render_doc = load_render_doc()
 
-
-
     def init(
             self, 
             device : spy.Device, 
@@ -53,9 +51,13 @@ class IScene:
             self,
             ui_main_window : spy.ui.Window
     ):
-        is_renderdoc_avail = spy.renderdoc.is_available()
+        if self.ui_renderdoc_text != None and self.ui_main_window != None:
+            self.ui_main_window.add_child(self.ui_renderdoc_text)
+            return
 
-        if g_Settings and ui_main_window and is_renderdoc_avail:
+        is_renderdoc_avail : bool = spy.renderdoc.is_available()
+
+        if g_Settings != None and ui_main_window != None and is_renderdoc_avail == True:
             if g_Settings.enable_renderdoc_capture == True:
                 self.ui_renderdoc_text = spy.ui.Text(ui_main_window,f"\nRenderDoc - Enabled!\n\tSave directory -> [{_g_render_doc.get_capture_file_path_template()}]")
 
@@ -63,7 +65,7 @@ class IScene:
 
 
     def _shutdown_renderdoc(self):
-        if self.ui_renderdoc_text and self.ui_main_window:
+        if self.ui_renderdoc_text != None and self.ui_main_window != None:
             self.ui_main_window.remove_child(self.ui_renderdoc_text)
             
 
