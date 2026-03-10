@@ -61,14 +61,19 @@ class Camera:
         self.mView[1][:3] = np.cross(self.mView[0][:3], self.vFront[:3])
         self.mView[1][:3] = self.mView[1][:3] / np.linalg.norm(self.mView[1][:3])
 
+        # be careful almost all variables in python is references so when we change -self.vFront we don't get a copy like we would like to get in languages in C++
+        # but it changes self.mView[2] content and thus self.vFront is changed!!
+        # so we would like to use front here and then negate then negate and calculate translation component
+        self.mView[3, 0] = -np.dot(self.mView[0][:3], self.vPosition)
+        self.mView[3, 1] = -np.dot(self.mView[1][:3], self.vPosition)
+        self.mView[3, 2] = -np.dot(self.vFront[:3], self.vPosition)
+
         # we want to keep position of object if we change .z component when orientation of view and model matrix are idenitites then
         # -z = moves forward (from us like deep into screen)
         # +z = moves backward (to us like being behind camera)
         self.mView[2] = -self.vFront
 
-        self.mView[3, 0] = -np.dot(self.mView[0][:3], self.vPosition)
-        self.mView[3, 1] = -np.dot(self.mView[1][:3], self.vPosition)
-        self.mView[3, 2] = -np.dot(self.mView[2][:3], self.vPosition)
+
 
         if self.binding_movement_forward:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
@@ -80,11 +85,11 @@ class Camera:
 
         if self.binding_movement_right:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.mView[2][:3] * dt
+                self.vPosition += self.mView[0][:3] * dt
 
         if self.binding_movement_left:
             if self.binding_movement_left.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.mView[2][:3] * dt
+                self.vPosition -= self.mView[0][:3] * dt
 
 
     def print_current_data(self):
