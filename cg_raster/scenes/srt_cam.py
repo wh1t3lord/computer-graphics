@@ -65,9 +65,9 @@ class SceneRasterTriangleCamera(core.IScene):
             self.shader_data_triangle_color = np.array([1,1,1], dtype=np.float32)
             self.vTrianglePosition = np.array([0,0,0], dtype=np.float32)
             self.mTriangleOrientation = np.identity(4, dtype=np.float32)
-            self.mTriangleOrientation[0,3]=1.0
-            self.mTriangleOrientation[1,3]=1.0
-            self.mTriangleOrientation[2,3]=1.0
+            self.mTriangleOrientation[0,3]=0.0
+            self.mTriangleOrientation[1,3]=0.0
+            self.mTriangleOrientation[2,3]=0.0
             self.mTriangleOrientation[3,3]=1.0
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
