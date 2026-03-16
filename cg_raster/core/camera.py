@@ -31,6 +31,8 @@ class Camera:
         self.binding_cam_pitch = input.get_binding_state(core.input.eInputBindingsType.kCamLookPitch)
         self.binding_cam_yaw = input.get_binding_state(core.input.eInputBindingsType.kCamLookYaw)
 
+        self.camera_speed = 1.0
+
         self.print_current_data()
 
 
@@ -40,12 +42,12 @@ class Camera:
     ):
         if self.binding_cam_pitch:
             if self.binding_cam_pitch.state == core.input.eInputEventState.kMoving:
-             #   self.camera.pitch += self.binding_cam_pitch.value * dt
+                self.pitch += self.binding_cam_pitch.value * dt
                 pass
 
         if self.binding_cam_yaw:
             if self.binding_cam_yaw.state == core.input.eInputEventState.kMoving:
-              #  self.camera.yaw += self.binding_cam_yaw.value * dt
+                self.yaw -= self.binding_cam_yaw.value * dt
                 pass
 
         self.vFront = self.mView[2]
@@ -77,19 +79,19 @@ class Camera:
 
         if self.binding_movement_forward:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.vFront[:3] * dt
+                self.vPosition += self.vFront[:3] * dt * self.camera_speed
 
         if self.binding_movement_backward:
             if self.binding_movement_backward.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.vFront[:3] * dt
+                self.vPosition -= self.vFront[:3] * dt * self.camera_speed
 
         if self.binding_movement_right:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.mView[0][:3] * dt
+                self.vPosition += self.mView[0][:3] * dt * self.camera_speed
 
         if self.binding_movement_left:
             if self.binding_movement_left.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.mView[0][:3] * dt
+                self.vPosition -= self.mView[0][:3] * dt * self.camera_speed
 
 
     def print_current_data(self):

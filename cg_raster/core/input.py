@@ -84,7 +84,7 @@ class Input:
                 events=[spy.MouseEventType.move],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eInputAxisType.kAbsolute,
+                axis_type=eInputAxisType.kRelative,
                 device_type=eInputDeviceType.kNone,
                 state=eInputEventState.kNone
             ),
@@ -92,7 +92,7 @@ class Input:
                 events=[spy.MouseEventType.move],
                 value=0.0,
                 value_prev=0.0,
-                axis_type=eInputAxisType.kAbsolute,
+                axis_type=eInputAxisType.kRelative,
                 device_type=eInputDeviceType.kNone,
                 state=eInputEventState.kNone
             ),
@@ -166,13 +166,21 @@ class Input:
             for bind_name, state in self.bindings.items():
                 if event.is_move() and spy.MouseEventType.move in state.events:
                     if bind_name == CONST_CAM_PITCH:
-                        state.value = event.pos.y - state.value_prev
-                        state.value_prev = event.pos.y
+                        if state.axis_type == eInputAxisType.kRelative:
+                            state.value = event.pos.y - state.value_prev
+                            state.value_prev = event.pos.y
+                        else:
+                            state.value = event.pos.y
+                            
                         state.state = eInputEventState.kMoving
 
                     elif bind_name == CONST_CAM_YAW:
-                        state.value = event.pos.x - state.value_prev
-                        state.value_prev = event.pos.x
+                        if state.axis_type == eInputAxisType.kRelative:
+                            state.value = event.pos.x - state.value_prev
+                            state.value_prev = event.pos.x
+                        else:
+                            state.value = event.pos.x
+
                         state.state = eInputEventState.kMoving
 
     def get_binding_state(
@@ -198,9 +206,20 @@ class Input:
     def update(self):
         if self.bindings:
             for bind_name, state in self.bindings.items():
-                if state.axis_type == eInputAxisType.kAbsolute and (state.state == eInputEventState.kReleased or state.state == eInputEventState.kMoving):
+                if (state.state == eInputEventState.kReleased or state.state == eInputEventState.kMoving):
                     state.value = 0.0
                     state.state = eInputEventState.kNone
+
+
+    def update_capture_mouse(self, event : spy.MouseEvent, window : spy.Window):
+        # TODO: replace with event from input not direct device key mapping
+        if event.button == spy.MouseButton.right:
+            if event.is_button_down():
+                if window != None:
+                    if window.cursor_mode == spy.CursorMode.disabled:
+                        window.cursor_mode = spy.CursorMode.normal
+                    else:
+                        window.cursor_mode = spy.CursorMode.disabled
 
     def load_bindings(self, configname : str):
         pass

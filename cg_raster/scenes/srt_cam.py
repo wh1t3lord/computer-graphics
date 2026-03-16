@@ -98,6 +98,7 @@ class SceneRasterTriangleCamera(core.IScene):
                 self.swapchain.configure(width=window.width,height=window.height)
 
                 self.ui = ui
+                self.window = window
 
             if ui_main_window != None and self.ui_shader_data_triangle_position == None and self.ui_shader_data_triangle_color == None:
                     self.ui_shader_data_triangle_color = spy.ui.DragFloat3(
@@ -249,6 +250,10 @@ class SceneRasterTriangleCamera(core.IScene):
         if self.input:
             if event:
                 self.input.update_mouse(event)
+
+                # we want to disable and try to use raw mouse cursor handling
+                self.input.update_capture_mouse(event, self.window)
+
 
     def _on_keyboard_event(
             self,

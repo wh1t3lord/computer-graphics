@@ -34,7 +34,6 @@ class App:
         self.__register_scenes()
         self.__init()
 
-
         self.set_current_scene(self.current_scene_name)
 
     def __register_scenes(self):
