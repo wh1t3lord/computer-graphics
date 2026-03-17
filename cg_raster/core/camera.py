@@ -32,6 +32,7 @@ class Camera:
         self.binding_cam_yaw = input.get_binding_state(core.input.eInputBindingsType.kCamLookYaw)
 
         self.camera_speed = 1.0
+        self.can_update_input = True
 
         self.print_current_data()
 
@@ -40,12 +41,12 @@ class Camera:
             self,
             dt : spy.math.float1
     ):
-        if self.binding_cam_pitch:
+        if self.binding_cam_pitch and self.can_update_input == True:
             if self.binding_cam_pitch.state == core.input.eInputEventState.kMoving:
                 self.pitch += self.binding_cam_pitch.value * dt
                 pass
 
-        if self.binding_cam_yaw:
+        if self.binding_cam_yaw and self.can_update_input == True:
             if self.binding_cam_yaw.state == core.input.eInputEventState.kMoving:
                 self.yaw -= self.binding_cam_yaw.value * dt
                 pass
@@ -77,19 +78,19 @@ class Camera:
 
 
 
-        if self.binding_movement_forward:
+        if self.binding_movement_forward and self.can_update_input == True:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
                 self.vPosition += self.vFront[:3] * dt * self.camera_speed
 
-        if self.binding_movement_backward:
+        if self.binding_movement_backward and self.can_update_input == True:
             if self.binding_movement_backward.state == core.input.eInputEventState.kHolding:
                 self.vPosition -= self.vFront[:3] * dt * self.camera_speed
 
-        if self.binding_movement_right:
+        if self.binding_movement_right and self.can_update_input == True:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:
                 self.vPosition += self.mView[0][:3] * dt * self.camera_speed
 
-        if self.binding_movement_left:
+        if self.binding_movement_left and self.can_update_input == True:
             if self.binding_movement_left.state == core.input.eInputEventState.kHolding:
                 self.vPosition -= self.mView[0][:3] * dt * self.camera_speed
 

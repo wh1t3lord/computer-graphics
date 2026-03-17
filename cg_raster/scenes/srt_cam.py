@@ -130,6 +130,12 @@ class SceneRasterTriangleCamera(core.IScene):
             dt : spy.math.float1
         ):
         if self.camera:
+
+            if self.window.cursor_mode != spy.CursorMode.disabled:
+                self.camera.can_update_input = False
+            else:
+                self.camera.can_update_input = True
+
             self.camera.update(dt)
 
         if self.input:

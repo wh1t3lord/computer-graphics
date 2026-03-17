@@ -112,9 +112,10 @@ class App:
         self.window = spy.Window(
             width=screen_width,
             height=screen_height,
-            title="",
+            title="wh1t3lord - computer graphics demos ^^",
+            mode=spy.WindowMode.normal,
             resizable=True
-        )
+        )        
 
         if self.window:
             self.window.on_resize = self.__window_callback_resize
