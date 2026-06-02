@@ -13,7 +13,7 @@ Follow these steps in following order:
 2) pip install requirements.txt
 3) now choose demo and run using main.py files that store in each top level subfolders (cg_raster; cg_rtx; cg_neural)
 
-Or you can do this steps as in GIF:
+Or you can do this steps as in GIF (Based on using IDE is Visual Studio Code):
 
 
 
