@@ -11,6 +11,11 @@ class SceneRasterTriangleCamera(core.IScene):
         super().__init__()
         self.ui_shader_data_triangle_color = None
         self.ui_shader_data_triangle_position = None
+        self.ui_print_camera_basis = None
+        self.ui_print_camera_orientation_matrix = None
+        self.ui_print_camera_yaw_and_pitch = None
+        self.ui_cpu_data_camera_position = None
+        self.ui_cpu_data_camera_fov = None
 
     def _init(
             self,
@@ -20,9 +25,28 @@ class SceneRasterTriangleCamera(core.IScene):
             ui_main_window : spy.ui.Window,
             shaders_path : Path
         ):
-        if ui_main_window != None and self.ui_shader_data_triangle_color != None and self.ui_shader_data_triangle_position != None:
-            ui_main_window.add_child(self.ui_shader_data_triangle_color)
-            ui_main_window.add_child(self.ui_shader_data_triangle_position)
+        if ui_main_window != None:
+            if self.ui_shader_data_triangle_color != None:
+                ui_main_window.add_child(self.ui_shader_data_triangle_color)
+            
+            if self.ui_shader_data_triangle_position != None:
+                ui_main_window.add_child(self.ui_shader_data_triangle_position)
+
+            if self.ui_cpu_data_camera_fov != None:
+                ui_main_window.add_child(self.ui_cpu_data_camera_fov)
+
+            if self.ui_cpu_data_camera_position != None:
+                ui_main_window.add_child(self.ui_cpu_data_camera_position)
+
+            if self.ui_print_camera_basis != None:
+                ui_main_window.add_child(self.ui_print_camera_basis)
+
+            if self.ui_print_camera_orientation_matrix != None:
+                ui_main_window.add_child(self.ui_print_camera_orientation_matrix)
+
+            if self.ui_print_camera_yaw_and_pitch != None:
+                ui_main_window.add_child(self.ui_print_camera_yaw_and_pitch)
+
 
         print(f'{self.__class__.__name__}: init called')
 
@@ -90,6 +114,8 @@ class SceneRasterTriangleCamera(core.IScene):
             # let's create our camera based on euler rotations
             self.camera = core.Camera(self.input)
 
+            self.camera.vPosition[2] = -30.0
+
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
             self.binding_cam_yaw = self.input.get_binding_state(core.eInputBindingsType.kCamLookYaw)
 
@@ -100,7 +126,8 @@ class SceneRasterTriangleCamera(core.IScene):
                 self.ui = ui
                 self.window = window
 
-            if ui_main_window != None and self.ui_shader_data_triangle_position == None and self.ui_shader_data_triangle_color == None:
+            if ui_main_window != None:
+                if self.ui_shader_data_triangle_color == None:
                     self.ui_shader_data_triangle_color = spy.ui.DragFloat3(
                         ui_main_window,
                         'triangle color',
@@ -111,6 +138,7 @@ class SceneRasterTriangleCamera(core.IScene):
                         1.0
                     )
 
+                if  self.ui_shader_data_triangle_position == None:
                     self.ui_shader_data_triangle_position = spy.ui.DragFloat3(
                         ui_main_window,
                         'triangle position',
@@ -121,20 +149,63 @@ class SceneRasterTriangleCamera(core.IScene):
                         100.0
                     )
 
+                if self.ui_cpu_data_camera_position == None:
                     self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
                         ui_main_window,
                         'camera position',
                         self.camera.vPosition,
-                        self._ui_update_camera_position,
+                        self._ui_set_dragfloat3_camera_position,
                         0.01,
                         -100.0,
                         100.0
                     )
 
-                    self.ui_main_window = ui_main_window
+                if self.ui_cpu_data_camera_fov == None:
+                    self.ui_cpu_data_camera_fov = spy.ui.DragFloat(
+                        ui_main_window,
+                        'camera fov (degrees)',
+                        self.camera.fov,
+                        self._ui_set_dragfloat_camera_fov,
+                        0.01,
+                        10.0,
+                        120.0
+                    )
 
-    def _ui_update_camera_position(self, value):
+                if self.ui_print_camera_basis == None:
+                    self.ui_print_camera_basis = spy.ui.Text(
+                        ui_main_window,
+                        r"""
+Camera basis:
+
++Y (Up)
+|
+|    +Z (into screen/away)
+|   /
+|  /
+| /
++-------- +X (Right)
+                        """
+                    )
+
+                if self.ui_print_camera_orientation_matrix == None:
+                    self.ui_print_camera_orientation_matrix = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
+
+                if self.ui_print_camera_yaw_and_pitch == None:
+                    self.ui_print_camera_yaw_and_pitch = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
+
+                self.ui_main_window = ui_main_window
+
+    def _ui_set_dragfloat3_camera_position(self, value):
         self.camera.vPosition = value
+
+    def _ui_set_dragfloat_camera_fov(self, value):
+        self.camera.fov = value
 
     def _update(
             self,
@@ -149,12 +220,19 @@ class SceneRasterTriangleCamera(core.IScene):
 
 
             if self.camera.can_update_input:
-                if self.ui_cpu_data_camera_position:
+                if self.ui_cpu_data_camera_position is not None:
                     # Because binding is not direct and slanpy creates underlying temp copy variable of binded value argument for DragFloat3
                     # So we need to emulate 'reference' updating if a such binding model would be provided by slangpy library
                     self.ui_cpu_data_camera_position.value = self.camera.vPosition
 
             self.camera.update(dt)
+
+            if self.ui_print_camera_orientation_matrix is not None:
+                self.ui_print_camera_orientation_matrix.text = f'[0] = {self.camera.mView[0][0]:.3f} {self.camera.mView[0][1]:.3f} {self.camera.mView[0][2]:.3f} {self.camera.mView[0][3]:.3f} (X | Right)\n[1] = {self.camera.mView[1][0]:.3f} {self.camera.mView[1][1]:.3f} {self.camera.mView[1][2]:.3f} {self.camera.mView[1][3]:.3f}  (Y | Up)\n[2] = {self.camera.mView[2][0]:.3f} {self.camera.mView[2][1]:.3f} {self.camera.mView[2][2]:.3f} {self.camera.mView[2][3]:.3f} (Z | Forward)\n[3] = {self.camera.mView[3][0]:.3f} {self.camera.mView[3][1]:.3f} {self.camera.mView[3][2]:.3f} {self.camera.mView[3][3]:.3f}'
+
+            if self.ui_print_camera_yaw_and_pitch is not None:
+                self.ui_print_camera_yaw_and_pitch.text = f'yaw={self.camera.yaw:.3f} pitch={self.camera.pitch:.3f}'
+
 
         if self.input:
             self.input.update()
@@ -254,6 +332,10 @@ class SceneRasterTriangleCamera(core.IScene):
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_color)
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_position)
            self.ui_main_window.remove_child(self.ui_cpu_data_camera_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_camera_fov)
+           self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
+           self.ui_main_window.remove_child(self.ui_print_camera_yaw_and_pitch)
+           self.ui_main_window.remove_child(self.ui_print_camera_basis)
 
     def _on_resize(
             self,

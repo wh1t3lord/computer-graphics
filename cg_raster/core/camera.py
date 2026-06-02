@@ -3,6 +3,19 @@ import numpy as np
 import core.input
 
 # Euler based camera
+"""
+
+    Camera basis is:
+
+        +Y (Up)
+        |
+        |    +Z (into screen/away)
+        |   /
+        |  /
+        | /
+        +-------- +X (Right)
+    
+"""
 class Camera:
     def __init__(
             self, 
@@ -36,7 +49,6 @@ class Camera:
 
         self.print_current_data()
 
-
     def update(
             self,
             dt : spy.math.float1
@@ -69,12 +81,12 @@ class Camera:
         # so we would like to use front here and then negate then negate and calculate translation component
         self.mView[3, 0] = -np.dot(self.mView[0][:3], self.vPosition)
         self.mView[3, 1] = -np.dot(self.mView[1][:3], self.vPosition)
-        self.mView[3, 2] = -np.dot(self.vFront[:3], self.vPosition)
+        self.mView[3, 2] = -np.dot(self.mView[2][:3], self.vPosition)
 
         # we want to keep position of object if we change .z component when orientation of view and model matrix are idenitites then
         # -z = moves forward (from us like deep into screen)
         # +z = moves backward (to us like being behind camera)
-        self.mView[2] = -self.vFront
+        self.mView[2][:3] = -self.vFront[:3]
 
 
 
