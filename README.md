@@ -5,7 +5,7 @@ This is my practice related to AI & Computer Graphics. This repository is for ed
 ## Usage
 
 Requirements:
-- Python >= 3.11
+- Python >= 3.7 & Python <= 3.12
 
 Follow these steps in following order:
 
