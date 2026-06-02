@@ -121,15 +121,30 @@ class SceneRasterTriangleCamera(core.IScene):
                         100.0
                     )
 
+                    self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
+                        ui_main_window,
+                        'camera position',
+                        self.camera.vPosition,
+                        self._ui_update_camera_position,
+                        0.01,
+                        -100.0,
+                        100.0
+                    )
+
                     self.ui_main_window = ui_main_window
 
-
+    def _ui_update_camera_position(self, value):
+        self.camera.vPosition = value
 
     def _update(
             self,
             dt : spy.math.float1
         ):
         if self.camera:
+
+            # Because binding is not direct and slanpy creates underlying temp copy variable of binded value argument for DragFloat3
+            # So we need to emulate 'reference' updating if a such binding model would be provided by slangpy library
+            self.ui_cpu_data_camera_position.value = self.camera.vPosition
 
             if self.window.cursor_mode != spy.CursorMode.disabled:
                 self.camera.can_update_input = False
