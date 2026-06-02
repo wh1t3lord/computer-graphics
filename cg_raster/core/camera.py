@@ -99,11 +99,11 @@ class Camera:
 
         if self.binding_movement_forward != None and self.can_update_input == True:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.vFront[:3] * dt * self.camera_speed
+                self.vPosition += self.mView[2][:3] * dt * self.camera_speed
 
         if self.binding_movement_backward != None and self.can_update_input == True:
             if self.binding_movement_backward.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.vFront[:3] * dt * self.camera_speed
+                self.vPosition -= self.mView[2][:3] * dt * self.camera_speed
 
         if self.binding_movement_right != None and self.can_update_input == True:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:
