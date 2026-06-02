@@ -253,6 +253,7 @@ class SceneRasterTriangleCamera(core.IScene):
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_color)
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_camera_position)
 
     def _on_resize(
             self,
