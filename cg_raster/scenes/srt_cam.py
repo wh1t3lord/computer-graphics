@@ -179,7 +179,7 @@ Camera basis:
 
 +Y (Up)
 |
-|    +Z (into screen/away)
+|    +Z (Forward)
 |   /
 |  /
 | /
