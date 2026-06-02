@@ -112,7 +112,7 @@ class App:
         self.window = spy.Window(
             width=screen_width,
             height=screen_height,
-            title="wh1t3lord - computer graphics demos ^^",
+            title="wh1t3lord - [raster] demos",
             mode=spy.WindowMode.normal,
             resizable=True
         )        
