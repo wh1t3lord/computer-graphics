@@ -23,8 +23,11 @@ class SceneRasterTriangle(core.IScene):
         self.device = device
 
         if self.device != None:
-            shader_name = shaders_path / 'raster_triangle' / '2d.slang'
+            shader_name = shaders_path / 'raster_triangle' / 'srt.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
+            
+            float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)
+
             input_layout = self.device.create_input_layout(
                 input_elements=[
                     {
@@ -33,7 +36,7 @@ class SceneRasterTriangle(core.IScene):
                         "format": spy.Format.rg32_float,
                     }
                 ],
-                vertex_streams=[{"stride": 8}],
+                vertex_streams=[{"stride": float_size * 2}],
             )
 
             self.pipeline = self.device.create_render_pipeline(

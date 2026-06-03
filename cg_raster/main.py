@@ -41,7 +41,8 @@ class App:
             "empty": scenes.SceneRasterEmpty(),
             "2d - triangle": scenes.SceneRasterTriangle(),
             "2d - triangle with color": scenes.SceneRasterTriangleColor(),
-            "2d - color triangle with camera": scenes.SceneRasterTriangleCamera()
+            "3d - color triangle with camera": scenes.SceneRasterTriangleCamera(),
+            "3d - static box with camera": scenes.SceneRasterStaticModelNaiveBoxCamera()
         }
 
     def __window_callback_resize(

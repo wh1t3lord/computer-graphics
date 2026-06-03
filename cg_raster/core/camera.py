@@ -54,6 +54,7 @@ class Camera:
             self.binding_cam_yaw = None
 
         self.camera_speed = 1.0
+        self.invert_mouse_y_axis = input.invert_mouse_y_axis
         self.can_update_input = True
 
         self.print_current_data()
@@ -64,46 +65,41 @@ class Camera:
     ):
         if self.binding_cam_pitch != None and self.can_update_input == True:
             if self.binding_cam_pitch.state == core.input.eInputEventState.kMoving:
-                self.pitch += self.binding_cam_pitch.value * dt
-                pass
+                if self.invert_mouse_y_axis == True:
+                    self.pitch -= self.binding_cam_pitch.value * dt
+                else:
+                    self.pitch += self.binding_cam_pitch.value * dt
 
         if self.binding_cam_yaw != None and self.can_update_input == True:
             if self.binding_cam_yaw.state == core.input.eInputEventState.kMoving:
-                self.yaw -= self.binding_cam_yaw.value * dt
-                pass
+                self.yaw += self.binding_cam_yaw.value * dt
 
-        self.vFront = self.mView[2]
+        self.vFront = np.zeros(3, dtype=np.float32)
 
         self.vFront[0] = spy.math.sin(spy.math.radians(self.yaw)) * spy.math.cos(spy.math.radians(self.pitch))
         self.vFront[1] = spy.math.sin(spy.math.radians(self.pitch))
-        self.vFront[2] = spy.math.cos(spy.math.radians(self.yaw)) * -spy.math.cos(spy.math.radians(self.pitch))
+        self.vFront[2] = spy.math.cos(spy.math.radians(self.yaw)) * spy.math.cos(spy.math.radians(self.pitch))
 
         self.vFront[:3] = self.vFront[:3] / np.linalg.norm(self.vFront[:3])
-
-        self.mView[0][:3] = np.cross(self.vFront[:3], np.array([0.0, 1.0, 0.0], dtype=np.float32))
+        
+        self.mView[0][:3] = np.cross(np.array([0.0, 1.0, 0.0], dtype=np.float32), self.vFront[:3])
         self.mView[0][:3] = self.mView[0][:3] / np.linalg.norm(self.mView[0][:3])
-        self.mView[1][:3] = np.cross(self.mView[0][:3], self.vFront[:3])
+        self.mView[1][:3] = np.cross(self.vFront[:3], self.mView[0][:3])
         self.mView[1][:3] = self.mView[1][:3] / np.linalg.norm(self.mView[1][:3])
 
-        # we want to keep position of object if we change .z component when orientation of view and model matrix are idenitites then
-        # -z = moves forward (from us like deep into screen)
-        # +z = moves backward (to us like being behind camera)
         self.mView[2][:3] = -self.vFront[:3]
 
-        # be careful almost all variables in python is references so when we change -self.vFront we don't get a copy like we would like to get in languages in C++
-        # but it changes self.mView[2] content and thus self.vFront is changed!!
-        # so we would like to use front here and then negate then negate and calculate translation component
-        self.mView[3, 0] = -np.dot(self.mView[0][:3], self.vPosition)
-        self.mView[3, 1] = -np.dot(self.mView[1][:3], self.vPosition)
-        self.mView[3, 2] = -np.dot(-self.mView[2][:3], self.vPosition)
+        self.mView[0, 3] = -np.dot(self.mView[0][:3], self.vPosition)
+        self.mView[1, 3] = -np.dot(self.mView[1][:3], self.vPosition)
+        self.mView[2, 3] = -np.dot(self.mView[2][:3], self.vPosition)
 
         if self.binding_movement_forward != None and self.can_update_input == True:
             if self.binding_movement_forward.state == core.input.eInputEventState.kHolding:
-                self.vPosition += self.mView[2][:3] * dt * self.camera_speed
+                self.vPosition += self.vFront[:3] * dt * self.camera_speed
 
         if self.binding_movement_backward != None and self.can_update_input == True:
             if self.binding_movement_backward.state == core.input.eInputEventState.kHolding:
-                self.vPosition -= self.mView[2][:3] * dt * self.camera_speed
+                self.vPosition -= self.vFront[:3] * dt * self.camera_speed
 
         if self.binding_movement_right != None and self.can_update_input == True:
             if self.binding_movement_right.state == core.input.eInputEventState.kHolding:

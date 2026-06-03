@@ -46,6 +46,8 @@ CONST_CAM_PITCH = None
 
 class Input:
     def __init__(self):
+        self.invert_mouse_y_axis = True
+
         # defaults
         self.bindings = {
             self.convert_bindings_to_str(eInputBindingsType.kMoveForward) : InputBindingState(
