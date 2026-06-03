@@ -42,7 +42,10 @@ class App:
             "2d - triangle": scenes.SceneRasterTriangle(),
             "2d - triangle with color": scenes.SceneRasterTriangleColor(),
             "3d - color triangle with camera": scenes.SceneRasterTriangleCamera(),
-            "3d - static box with camera": scenes.SceneRasterStaticModelNaiveBoxCamera()
+            "3d - static box with camera": scenes.SceneRasterStaticModelNaiveBoxCamera(),
+            "3d - static box with color & camera": scenes.SceneRasterStaticModelNaiveBoxWithColorCamera(),
+            "3d - static box with color & texture & camera": scenes.SceneRasterStaticModelNaiveBoxWithTextureCamera(),
+            "3d - static box with texture & transform & camera": scenes.SceneRasterStaticModelNaiveTextureBoxTransformCamera()
         }
 
     def __window_callback_resize(
