@@ -16,7 +16,7 @@ class ModelNaive:
         self.mModel[2,3]=0.0
         self.mModel[3,3]=1.0
 
-        self.vPosition = self.mModel[3]
+        self.vPosition = np.zeros(3, dtype=np.float32)
 
     def load_from_file(
         self,
@@ -57,31 +57,101 @@ class ModelNaive:
 def model_get_box_vertices_no_color_attrb():
     vertices = np.array(
         [
+            # Front face (z = -1) 
             -1, -1, -1,
              1, -1, -1,
              1,  1, -1,
             -1,  1, -1,
+
+            # Back face (z = 1) 
+             1, -1,  1,
             -1, -1,  1,
+            -1,  1,  1,
+             1,  1,  1,
+
+            # Right face (x = 1) 
+             1, -1, -1,
              1, -1,  1,
              1,  1,  1,
-            -1,  1,  1
+             1,  1, -1,
+
+            # Left face (x = -1)  
+            -1, -1,  1,
+            -1, -1, -1,
+            -1,  1, -1,
+            -1,  1,  1,
+
+            # Top face (y = 1) 
+            -1,  1, -1,
+             1,  1, -1,
+             1,  1,  1,
+            -1,  1,  1,
+
+            # Bottom face (y = -1)  
+            -1, -1,  1, 
+             1, -1,  1, 
+             1, -1, -1, 
+            -1, -1, -1, 
         ], 
         dtype=np.float32
     )
 
     return vertices
 
-def model_get_box_indicies_no_color_attrb():
+def model_get_box_indicies():
     indicies = np.array(
         [
-            0, 1, 2, 2, 3, 0,
-            1, 5, 6, 6, 2, 1,
-            5, 4, 7, 7, 6, 5,
-            4, 0, 3, 3, 7, 4,
-            3, 2, 6, 6, 7, 3,
-            4, 5, 1, 1, 0, 4
-        ], 
+            # Front (red)      # Back (green)
+            0, 2, 1, 2, 0, 3,  4, 6, 5, 6, 4, 7,
+            # Right (yellow)   # Left (blue)
+            8, 10, 9, 10, 8, 11,  12, 14, 13, 14, 12, 15,
+            # Top (white)      # Bottom (magenta)
+            16, 18, 17, 18, 16, 19,  20, 22, 21, 22, 20, 23,
+        ],
         dtype=np.uint32
     )
 
     return indicies
+def model_get_box_vertices_with_color_attrb():
+    vertices = np.array(
+        [
+            # Front face (z = -1) — RED
+            -1, -1, -1,  1, 0, 0,   # 0
+             1, -1, -1,  1, 0, 0,   # 1
+             1,  1, -1,  1, 0, 0,   # 2
+            -1,  1, -1,  1, 0, 0,   # 3
+
+            # Back face (z = 1) — GREEN
+             1, -1,  1,  0, 1, 0,   # 4
+            -1, -1,  1,  0, 1, 0,   # 5
+            -1,  1,  1,  0, 1, 0,   # 6
+             1,  1,  1,  0, 1, 0,   # 7
+
+            # Right face (x = 1) — YELLOW
+             1, -1, -1,  1, 1, 0,   # 8
+             1, -1,  1,  1, 1, 0,   # 9
+             1,  1,  1,  1, 1, 0,   # 10
+             1,  1, -1,  1, 1, 0,   # 11
+
+            # Left face (x = -1) — BLUE
+            -1, -1,  1,  0, 0, 1,   # 12
+            -1, -1, -1,  0, 0, 1,   # 13
+            -1,  1, -1,  0, 0, 1,   # 14
+            -1,  1,  1,  0, 0, 1,   # 15
+
+            # Top face (y = 1) — WHITE
+            -1,  1, -1,  1, 1, 1,   # 16
+             1,  1, -1,  1, 1, 1,   # 17
+             1,  1,  1,  1, 1, 1,   # 18
+            -1,  1,  1,  1, 1, 1,   # 19
+
+            # Bottom face (y = -1) — MAGENTA
+            -1, -1,  1,  1, 0, 1,   # 20
+             1, -1,  1,  1, 0, 1,   # 21
+             1, -1, -1,  1, 0, 1,   # 22
+            -1, -1, -1,  1, 0, 1,   # 23
+        ],
+        dtype=np.float32
+    )
+
+    return vertices

@@ -56,7 +56,7 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster_triangle' / 'srm1_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm1_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
 
@@ -94,8 +94,8 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_box_vertices_no_color_attrb(),
-                indicies=core.model_naive.model_get_box_indicies_no_color_attrb()
+                vertices=core.model_naive.model_get_box_vertices_with_color_attrb(),
+                indicies=core.model_naive.model_get_box_indicies()
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)

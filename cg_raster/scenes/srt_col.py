@@ -27,7 +27,7 @@ class SceneRasterTriangleColor(core.IScene):
         self.device = device
 
         if self.device != None:
-            shader_name = shaders_path / 'raster_triangle' / 'srt_col.slang'
+            shader_name = shaders_path / 'raster' / 'srt_col.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
             float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)

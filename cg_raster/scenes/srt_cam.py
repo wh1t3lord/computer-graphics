@@ -53,7 +53,7 @@ class SceneRasterTriangleCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster_triangle' / 'srt_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srt_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
             float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)
