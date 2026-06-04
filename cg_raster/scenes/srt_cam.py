@@ -330,6 +330,7 @@ Camera basis:
            del self.swapchain
            del self.vertex_buffer
            del self.index_buffer
+           del self.pipeline
 
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_shader_data_triangle_color)

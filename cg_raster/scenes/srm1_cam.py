@@ -14,6 +14,7 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
         self.ui_print_camera_basis = None
         self.ui_print_camera_orientation_matrix = None
         self.ui_print_camera_yaw_and_pitch = None
+        self.ui_print_camera_position = None
         self.ui_cpu_data_camera_position = None
         self.ui_cpu_data_camera_fov = None
 
@@ -33,6 +34,9 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
             
             if self.ui_cpu_data_model_position != None:
                 ui_main_window.add_child(self.ui_cpu_data_model_position)
+
+            if self.ui_print_camera_position != None:
+                ui_main_window.add_child(self.ui_print_camera_position)
 
             if self.debug_ui_cam == True:
                 if self.ui_print_camera_orientation_matrix != None:
@@ -88,7 +92,9 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
             # let's create our camera based on euler rotations
             self.camera = core.Camera(self.input)
 
-            self.camera.vPosition[2] = -15.0
+            self.camera.vPosition[0] = 1.7
+            self.camera.vPosition[1] = 1.2
+            self.camera.vPosition[2] = -2.3
 
             self.model = core.ModelNaive()
 
@@ -130,6 +136,12 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                         0.01,
                         -100.0,
                         100.0
+                    )
+
+                if self.ui_print_camera_position == None:
+                    self.ui_print_camera_position = spy.ui.Text(
+                        ui_main_window,
+                        ''
                     )
 
                 if self.debug_ui_cam == True:
@@ -216,6 +228,9 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                     # Because binding is not direct and slanpy creates underlying temp copy variable of binded value argument for DragFloat3
                     # So we need to emulate 'reference' updating if a such binding model would be provided by slangpy library
                     self.ui_cpu_data_camera_position.value = self.camera.vPosition
+
+            if self.ui_print_camera_position is not None:
+                self.ui_print_camera_position.text = f'Cam pos: {self.camera.vPosition[0]:.3f} {self.camera.vPosition[1]:.3f} {self.camera.vPosition[2]:.3f}'
 
             self.camera.update(dt)
 
@@ -316,6 +331,7 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
            self.swapchain.unconfigure()
 
            del self.swapchain
+           del self.pipeline
 
        if self.model is not None:
            if self.model.buffer_vertex is not None:
@@ -329,7 +345,8 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_shader_data_model_color)
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
-           
+           self.ui_main_window.remove_child(self.ui_print_camera_position)
+
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
             self.ui_main_window.remove_child(self.ui_cpu_data_camera_position)
