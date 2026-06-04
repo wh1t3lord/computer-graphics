@@ -95,7 +95,8 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
             self.model.load_from_memory(
                 device=self.device,
                 vertices=core.model_naive.model_get_box_vertices_no_color_attrb(),
-                indicies=core.model_naive.model_get_box_indicies()
+                indicies=core.model_naive.model_get_box_indicies(),
+                in_struct_size=12
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)

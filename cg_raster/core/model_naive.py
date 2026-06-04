@@ -29,13 +29,14 @@ class ModelNaive:
         self,
         device : spy.Device,
         vertices, 
-        indicies
+        indicies,
+        in_struct_size
     ):
         if device is None:
             return False
         
         self.vertex_size = vertices.itemsize * vertices.shape[0]
-        self.vertex_count = vertices.shape[0]
+        self.vertex_count = vertices.shape[0] / in_struct_size
         self.index_count = indicies.shape[0]
 
         if self.buffer_vertex is None:
@@ -43,6 +44,8 @@ class ModelNaive:
                 usage=spy.BufferUsage.vertex_buffer,
                 label="model_vertex_buffer",
                 data=vertices,
+                struct_size=in_struct_size,
+                element_count=self.vertex_size//in_struct_size
             )
 
         if self.buffer_index is None:
@@ -50,6 +53,8 @@ class ModelNaive:
                 usage=spy.BufferUsage.index_buffer,
                 label="model_index_buffer",
                 data=indicies,
+                struct_size=4,
+                size=4*self.index_count
             )
 
         return True

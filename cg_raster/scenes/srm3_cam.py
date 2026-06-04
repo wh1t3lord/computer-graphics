@@ -9,8 +9,8 @@ import numpy as np
 class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
     def __init__(self):
         super().__init__()
-        self.ui_shader_data_model_color = None
-        self.ui_shader_data_model_position = None
+
+        self.ui_cpu_data_model_position = None
         self.ui_print_camera_basis = None
         self.ui_print_camera_orientation_matrix = None
         self.ui_print_camera_yaw_and_pitch = None
@@ -27,12 +27,9 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
             ui_main_window : spy.ui.Window,
             shaders_path : Path
         ):
-        if ui_main_window != None:
-            if self.ui_shader_data_model_color != None:
-                ui_main_window.add_child(self.ui_shader_data_model_color)
-            
-            if self.ui_shader_data_model_position != None:
-                ui_main_window.add_child(self.ui_shader_data_model_position)
+        if ui_main_window != None:            
+            if self.ui_cpu_data_model_position != None:
+                ui_main_window.add_child(self.ui_cpu_data_model_position)
 
             if self.debug_ui_cam == True:
                 if self.ui_print_camera_orientation_matrix != None:
@@ -56,7 +53,7 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm1_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm2_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
 
@@ -68,18 +65,26 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                         "semantic_name": "POSITION",
                         "semantic_index": 0,
                         "format": spy.Format.rgb32_float,
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        "offset": float_size * 3,
                     }
                 ],
-                vertex_streams=[{"stride": float_size * 3}],
+                vertex_streams=[{"stride": float_size * 6}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
                 program=self.program,
                 input_layout=input_layout,
-                targets=[{"format": spy.Format.rgba32_float}]
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
             )
-
-            self.shader_data_model_color = np.array([1,1,1], dtype=np.float32)
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
@@ -95,7 +100,9 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
             self.model.load_from_memory(
                 device=self.device,
                 vertices=core.model_naive.model_get_box_vertices_with_color_attrb(),
-                indicies=core.model_naive.model_get_box_indicies()
+                indicies=core.model_naive.model_get_box_indicies(),
+                # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
+                in_struct_size=24
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
@@ -109,19 +116,8 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                 self.window = window
 
             if ui_main_window != None:
-                if self.ui_shader_data_model_color == None:
-                    self.ui_shader_data_model_color = spy.ui.DragFloat3(
-                        ui_main_window,
-                        'model color',
-                        self.shader_data_model_color,
-                        self._ui_set_dragfloat3_model_color,
-                        0.01,
-                        0.0,
-                        1.0
-                    )
-
-                if  self.ui_shader_data_model_position == None:
-                    self.ui_shader_data_model_position = spy.ui.DragFloat3(
+                if  self.ui_cpu_data_model_position == None:
+                    self.ui_cpu_data_model_position = spy.ui.DragFloat3(
                         ui_main_window,
                         'model position',
                         self.model.vPosition[:3],
@@ -190,10 +186,7 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
         self.camera.vPosition = value
 
     def _ui_set_dragfloat_camera_fov(self, value):
-        self.camera.fov = value
-
-    def _ui_set_dragfloat3_model_color(self, value):
-        self.shader_data_model_color = value    
+        self.camera.fov = value 
 
     def _ui_set_dragfloat3_model_position(self, value):
         self.model.vPosition[:3] = value
@@ -228,6 +221,12 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
         if self.input:
             self.input.update()
 
+
+        if self.model is not None:
+            self.model.mModel[0, 3] = self.model.vPosition[0]
+            self.model.mModel[1, 3] = self.model.vPosition[1]
+            self.model.mModel[2, 3] = self.model.vPosition[2]
+
     def _render(
             self
         ):
@@ -253,7 +252,6 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                 shader_object = rp.bind_pipeline(self.pipeline)
 
                 cursor = spy.ShaderCursor(shader_object)
-                cursor.g_ModelColor = self.shader_data_model_color
 
                 self.mProjection = spy.math.perspective(
                     spy.math.radians(self.camera.fov),
@@ -320,8 +318,7 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                self.model.buffer_index = None
                
        if self.ui_main_window:
-           self.ui_main_window.remove_child(self.ui_shader_data_model_color)
-           self.ui_main_window.remove_child(self.ui_shader_data_model_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
            
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)

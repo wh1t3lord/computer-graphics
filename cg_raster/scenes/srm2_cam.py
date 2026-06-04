@@ -65,11 +65,18 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
                         "semantic_name": "POSITION",
                         "semantic_index": 0,
                         "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
                     },
                     {
                         "semantic_name": "COLOR",
                         "semantic_index": 0,
                         "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
                     }
                 ],
                 vertex_streams=[{"stride": float_size * 6}],
@@ -78,7 +85,10 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
             self.pipeline = self.device.create_render_pipeline(
                 program=self.program,
                 input_layout=input_layout,
-                targets=[{"format": spy.Format.rgba32_float}]
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
             )
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
@@ -95,7 +105,9 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
             self.model.load_from_memory(
                 device=self.device,
                 vertices=core.model_naive.model_get_box_vertices_with_color_attrb(),
-                indicies=core.model_naive.model_get_box_indicies()
+                indicies=core.model_naive.model_get_box_indicies(),
+                # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
+                in_struct_size=24
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
