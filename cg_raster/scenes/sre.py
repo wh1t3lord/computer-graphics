@@ -17,7 +17,9 @@ class SceneRasterEmpty(core.IScene):
             window : spy.Window,
             ui : spy.ui.Context,
             ui_main_window : spy.ui.Window,
-            shaders_path : Path
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
         ):
         # we don't want to reallocate/recreate already created and existed objects in internals of engine...
         if ui_main_window != None and self.ui_text != None and self.ui_clear_color_slider != None:

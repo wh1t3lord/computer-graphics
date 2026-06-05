@@ -23,7 +23,9 @@ class SceneRasterTriangleCamera(core.IScene):
             window : spy.Window,
             ui : spy.ui.Context,
             ui_main_window : spy.ui.Window,
-            shaders_path : Path
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
         ):
         if ui_main_window != None:
             if self.ui_shader_data_triangle_color != None:

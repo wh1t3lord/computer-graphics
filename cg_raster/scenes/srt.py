@@ -16,7 +16,9 @@ class SceneRasterTriangle(core.IScene):
             window : spy.Window,
             ui : spy.ui.Context,
             ui_main_window : spy.ui.Window,
-            shaders_path : Path
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
         ):
         print(f'{self.__class__.__name__}: init called')
 

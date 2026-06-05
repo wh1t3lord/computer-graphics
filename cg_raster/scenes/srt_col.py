@@ -17,7 +17,9 @@ class SceneRasterTriangleColor(core.IScene):
             window : spy.Window,
             ui : spy.ui.Context,
             ui_main_window : spy.ui.Window,
-            shaders_path : Path
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
         ):
         if ui_main_window != None and self.ui_shader_data_triangle_color != None:
             ui_main_window.add_child(self.ui_shader_data_triangle_color)

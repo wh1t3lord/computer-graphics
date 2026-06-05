@@ -11,6 +11,8 @@ from screeninfo import get_monitors
 DIR_ROOT = Path(__file__).parent.parent
 DIR_DATA = DIR_ROOT / 'data'
 DIR_DATA_SHADERS = DIR_DATA / 'shaders'
+DIR_DATA_TEXTURES = DIR_DATA / 'textures'
+DIR_DATA_MODELS = DIR_DATA / 'models'
 
 app = None
 
@@ -169,7 +171,9 @@ class App:
                 self.window,
                 self.ui,
                 self.ui_window,
-                DIR_DATA_SHADERS
+                DIR_DATA_SHADERS,
+                DIR_DATA_TEXTURES,
+                DIR_DATA_MODELS
             )
 
             print(f'initialized scene -> {self.current_scene.__class__.__name__}')
@@ -224,6 +228,13 @@ if __name__ == "__main__":
     
     if not DIR_DATA_SHADERS.exists():
         raise 'failed to determine data/shaders path'
+    
+    if not DIR_DATA_TEXTURES.exists():
+        raise 'failed to determine data/textures path'
+    
+    if not DIR_DATA_MODELS.exists():
+        raise 'failed to determine data/models path'
+    
     app = App()
     app.update()
     app.shutdown()

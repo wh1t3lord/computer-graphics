@@ -29,7 +29,9 @@ class IScene:
             window : spy.Window,
             ui : spy.ui.Context,
             ui_main_window : spy.ui.Window,
-            shaders_path : Path
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
         ):
         self.ui_main_window = ui_main_window
         self.device = device
@@ -42,7 +44,9 @@ class IScene:
             window,
             ui,
             ui_main_window,
-            shaders_path
+            shaders_path,
+            textures_path,
+            models_path
         )
 
         self._init_renderdoc(ui_main_window=ui_main_window)

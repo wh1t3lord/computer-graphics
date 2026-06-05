@@ -10,7 +10,9 @@ class DebugGridPass:
     def init(
             self,
             device : spy.Device,
-            shader_folder_path : Path
+            shader_folder_path : Path,
+            textures_path : Path,
+            models_path : Path
     ):
         pass
 
