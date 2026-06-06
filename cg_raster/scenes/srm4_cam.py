@@ -12,6 +12,8 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
         super().__init__()
 
         self.ui_cpu_data_model_position = None
+        self.ui_cpu_data_model_rotation = None
+        self.ui_cpu_data_model_scale = None
         self.ui_print_camera_basis = None
         self.ui_print_camera_orientation_matrix = None
         self.ui_print_camera_yaw_and_pitch = None
@@ -37,6 +39,12 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
         if ui_main_window != None:            
             if self.ui_cpu_data_model_position != None:
                 ui_main_window.add_child(self.ui_cpu_data_model_position)
+
+            if self.ui_cpu_data_model_rotation != None:
+                ui_main_window.add_child(self.ui_cpu_data_model_rotation)
+
+            if self.ui_cpu_data_model_scale != None:
+                ui_main_window.add_child(self.ui_cpu_data_model_scale)
 
             if self.ui_print_camera_position != None:
                 ui_main_window.add_child(self.ui_print_camera_position)
@@ -183,6 +191,28 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
                         100.0
                     )
 
+                if self.ui_cpu_data_model_rotation == None:
+                    self.ui_cpu_data_model_rotation = spy.ui.DragFloat3(
+                        ui_main_window,
+                        'model rotation',
+                        self.model.vRotation[:3],
+                        self._ui_set_dragfloat3_model_rotation,
+                        0.1,
+                        -360.0,
+                        360.0
+                    )
+
+                if self.ui_cpu_data_model_scale == None:
+                    self.ui_cpu_data_model_scale = spy.ui.DragFloat3(
+                        ui_main_window,
+                        'model scale',
+                        self.model.vScale[:3],
+                        self._ui_set_dragfloat3_model_scale,
+                        0.01,
+                        0.0,
+                        10.0
+                    )
+
                 if self.ui_print_camera_position == None:
                     self.ui_print_camera_position = spy.ui.Text(
                         ui_main_window,
@@ -261,6 +291,12 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
     def _ui_set_dragfloat3_model_position(self, value):
         self.model.vPosition[:3] = value
 
+    def _ui_set_dragfloat3_model_rotation(self, value):
+        self.model.vRotation[:3] = value
+
+    def _ui_set_dragfloat3_model_scale(self, value):
+        self.model.vScale[:3] = value
+
     def _ui_set_checkbox_wireframe(self, value):
         self.wireframe_mode = value
 
@@ -299,9 +335,15 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
 
 
         if self.model is not None:
-            self.model.mModel[0, 3] = self.model.vPosition[0]
-            self.model.mModel[1, 3] = self.model.vPosition[1]
-            self.model.mModel[2, 3] = self.model.vPosition[2]
+            # actually it is kinda wasteful operations since it applies every frame
+            # you need to track manually when the changes happened and you apply update
+            # otherwise you do translation, then 3 rotations per axis (because for simplicity and consistency we don't cover quaternions right now)
+            # and you apply scale, it is costly operations for real-time system for CPU side! (keep that in mind)
+            self.model.apply_tsr_no_quat(
+                self.model.vPosition,
+                self.model.vRotation,
+                self.model.vScale
+            )
 
     def _render(
             self
@@ -405,6 +447,8 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
                
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_rotation)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_scale)
            self.ui_main_window.remove_child(self.ui_print_camera_position)
            self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
            

@@ -17,6 +17,28 @@ class ModelNaive:
         self.mModel[3,3]=1.0
 
         self.vPosition = np.zeros(3, dtype=np.float32)
+        self.vRotation = np.zeros(3, dtype=np.float32)
+        self.vScale = np.array([1.0,1.0,1.0], dtype=np.float32)
+
+    # simpler and plain version
+    # but not optimized and not effective
+    def apply_tsr_no_quat(
+            self,
+            translation,
+            rotation,
+            scale
+    ):
+        self.mModel = np.identity(4, dtype=np.float32)
+        self.mModel[0,3]=0.0
+        self.mModel[1,3]=0.0
+        self.mModel[2,3]=0.0
+        self.mModel[3,3]=1.0
+
+        self.mModel = spy.math.translate(self.mModel, translation)
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[0]), np.array([1.0,0.0,0.0], dtype=np.float32))
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[1]), np.array([0.0,1.0,0.0], dtype=np.float32))
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[2]), np.array([0.0,0.0,1.0], dtype=np.float32))
+        self.mModel = spy.math.scale(self.mModel, scale)
 
     def load_from_file(
         self,
