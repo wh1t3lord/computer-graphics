@@ -47,6 +47,7 @@ class App:
             "3d - static box with camera": scenes.SceneRasterStaticModelNaiveBoxCamera(),
             "3d - static box with color & camera": scenes.SceneRasterStaticModelNaiveBoxWithColorCamera(),
             "3d - static box with color & texture & camera": scenes.SceneRasterStaticModelNaiveBoxWithTextureCamera(),
+            "3d - static box with color & texture & camera (wireframe)": scenes.SceneRasterStaticModelNaiveBoxWithTextureWireframeCamera(),
             "3d - static box with texture & transform & camera": scenes.SceneRasterStaticModelNaiveTextureBoxTransformCamera()
         }
 

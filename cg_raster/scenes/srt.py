@@ -143,6 +143,7 @@ class SceneRasterTriangle(core.IScene):
            del self.swapchain
            del self.vertex_buffer
            del self.index_buffer
+           del self.program
            del self.pipeline
 
     def _on_resize(

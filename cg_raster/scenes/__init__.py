@@ -5,5 +5,6 @@ from scenes.sre import SceneRasterEmpty
 from scenes.srm1_cam import SceneRasterStaticModelNaiveBoxCamera
 from scenes.srm2_cam import SceneRasterStaticModelNaiveBoxWithColorCamera
 from scenes.srm3_cam import SceneRasterStaticModelNaiveBoxWithTextureCamera
+from scenes.srm3_1_cam import SceneRasterStaticModelNaiveBoxWithTextureWireframeCamera
 from scenes.srm4_cam import SceneRasterStaticModelNaiveTextureBoxTransformCamera
 from core import IScene

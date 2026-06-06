@@ -163,6 +163,7 @@ class SceneRasterTriangleColor(core.IScene):
            del self.swapchain
            del self.vertex_buffer
            del self.index_buffer
+           del self.program
            del self.pipeline
 
        if self.ui_main_window != None:

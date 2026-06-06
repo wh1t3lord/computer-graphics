@@ -5,11 +5,12 @@ import random
 import slangpy as spy
 from pathlib import Path
 import numpy as np
+import png
 
-class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
+class SceneRasterStaticModelNaiveBoxWithTextureWireframeCamera(core.IScene):
     def __init__(self):
         super().__init__()
-        self.ui_shader_data_model_color = None
+
         self.ui_cpu_data_model_position = None
         self.ui_print_camera_basis = None
         self.ui_print_camera_orientation_matrix = None
@@ -17,6 +18,9 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
         self.ui_print_camera_position = None
         self.ui_cpu_data_camera_position = None
         self.ui_cpu_data_camera_fov = None
+        self.ui_cpu_switch_wireframe = None
+
+        self.wireframe_mode = True
 
         self.debug_ui_cam = False
 
@@ -30,15 +34,15 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
             textures_path : Path,
             models_path : Path
         ):
-        if ui_main_window != None:
-            if self.ui_shader_data_model_color != None:
-                ui_main_window.add_child(self.ui_shader_data_model_color)
-            
+        if ui_main_window != None:            
             if self.ui_cpu_data_model_position != None:
                 ui_main_window.add_child(self.ui_cpu_data_model_position)
 
             if self.ui_print_camera_position != None:
                 ui_main_window.add_child(self.ui_print_camera_position)
+
+            if self.ui_cpu_switch_wireframe != None:
+                ui_main_window.add_child(self.ui_cpu_switch_wireframe)
 
             if self.debug_ui_cam == True:
                 if self.ui_print_camera_orientation_matrix != None:
@@ -62,7 +66,7 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm1_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm3_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
 
@@ -74,18 +78,46 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                         "semantic_name": "POSITION",
                         "semantic_index": 0,
                         "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
+                    },
+                    {
+                        "semantic_name": "TEXCOORD",
+                        "semantic_index": 0,
+                        "format": spy.Format.rg32_float,
+                        "offset": float_size * 6,
                     }
                 ],
-                vertex_streams=[{"stride": float_size * 3}],
+                vertex_streams=[{"stride": float_size * 8}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
                 program=self.program,
                 input_layout=input_layout,
-                targets=[{"format": spy.Format.rgba32_float}]
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
             )
 
-            self.shader_data_model_color = np.array([1,1,1], dtype=np.float32)
+            self.pipeline_wireframe = self.device.create_render_pipeline(
+                program=self.program,
+                input_layout=input_layout,
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise}
+            )
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
@@ -105,9 +137,28 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_box_vertices_no_color_attrb(),
+                vertices=core.model_naive.model_get_box_vertices_with_color_uv_attrb(),
                 indicies=core.model_naive.model_get_box_indicies(),
-                in_struct_size=12
+                # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
+                # AND we add uv so 24 + 8 (2 uv components per byte) = 32
+                in_struct_size=32
+            )
+
+            self.model_texture = core.TextureNaive()
+
+            self.model_texture.load_from_file(device, textures_path / 'wall' / 'brick1.png')
+
+            # for texture we need to use sampler that will define how we will sample our texture in shader 
+            # (for example, if we want to use linear or point sampling, or how we will handle uv coordinates that are outside of 0-1 range and so on)
+            self.sampler = self.device.create_sampler(
+                {
+                    "address_u": spy.TextureAddressingMode.wrap,
+                    "address_v": spy.TextureAddressingMode.wrap,
+                    "address_w": spy.TextureAddressingMode.wrap,
+                    "min_filter": spy.TextureFilteringMode.linear,
+                    "mag_filter": spy.TextureFilteringMode.linear,
+                    "mip_filter": spy.TextureFilteringMode.linear,
+                }
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
@@ -121,17 +172,6 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                 self.window = window
 
             if ui_main_window != None:
-                if self.ui_shader_data_model_color == None:
-                    self.ui_shader_data_model_color = spy.ui.DragFloat3(
-                        ui_main_window,
-                        'model color',
-                        self.shader_data_model_color,
-                        self._ui_set_dragfloat3_model_color,
-                        0.01,
-                        0.0,
-                        1.0
-                    )
-
                 if  self.ui_cpu_data_model_position == None:
                     self.ui_cpu_data_model_position = spy.ui.DragFloat3(
                         ui_main_window,
@@ -147,6 +187,14 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                     self.ui_print_camera_position = spy.ui.Text(
                         ui_main_window,
                         ''
+                    )
+
+                if self.ui_cpu_switch_wireframe == None:
+                    self.ui_cpu_switch_wireframe = spy.ui.CheckBox(
+                        ui_main_window,
+                        label='Wireframe',
+                        value=self.wireframe_mode,
+                        callback=self._ui_set_checkbox_wireframe
                     )
 
                 if self.debug_ui_cam == True:
@@ -208,13 +256,13 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
         self.camera.vPosition = value
 
     def _ui_set_dragfloat_camera_fov(self, value):
-        self.camera.fov = value
-
-    def _ui_set_dragfloat3_model_color(self, value):
-        self.shader_data_model_color = value    
+        self.camera.fov = value 
 
     def _ui_set_dragfloat3_model_position(self, value):
         self.model.vPosition[:3] = value
+
+    def _ui_set_checkbox_wireframe(self, value):
+        self.wireframe_mode = value
 
     def _update(
             self,
@@ -277,10 +325,13 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                     ]
                 }) as rp:
                 
-                shader_object = rp.bind_pipeline(self.pipeline)
+
+                if self.wireframe_mode == False:
+                    shader_object = rp.bind_pipeline(self.pipeline)
+                else:
+                    shader_object = rp.bind_pipeline(self.pipeline_wireframe)
 
                 cursor = spy.ShaderCursor(shader_object)
-                cursor.g_ModelColor = self.shader_data_model_color
 
                 self.mProjection = spy.math.perspective(
                     spy.math.radians(self.camera.fov),
@@ -292,6 +343,9 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                 cursor.g_mModel = self.model.mModel
                 cursor.g_mView = self.camera.mView
                 cursor.g_mProjection = self.mProjection
+
+                cursor.g_texture = self.model_texture.texture
+                cursor.g_sampler = self.sampler
 
 
                 rp.set_render_state(
@@ -338,6 +392,7 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
            del self.swapchain
            del self.program
            del self.pipeline
+           del self.pipeline_wireframe
 
        if self.model is not None:
            if self.model.buffer_vertex is not None:
@@ -349,10 +404,10 @@ class SceneRasterStaticModelNaiveBoxCamera(core.IScene):
                self.model.buffer_index = None
                
        if self.ui_main_window:
-           self.ui_main_window.remove_child(self.ui_shader_data_model_color)
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
            self.ui_main_window.remove_child(self.ui_print_camera_position)
-
+           self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
+           
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
             self.ui_main_window.remove_child(self.ui_cpu_data_camera_position)

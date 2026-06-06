@@ -108,6 +108,9 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
             self.camera.vPosition[1] = 1.2
             self.camera.vPosition[2] = -2.3
 
+            self.camera.pitch = -15
+            self.camera.yaw = -40
+
             self.model = core.ModelNaive()
 
             self.model.load_from_memory(
@@ -329,6 +332,7 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
            self.swapchain.unconfigure()
 
            del self.swapchain
+           del self.program
            del self.pipeline
 
        if self.model is not None:

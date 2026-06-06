@@ -5,6 +5,7 @@ import random
 import slangpy as spy
 from pathlib import Path
 import numpy as np
+import png
 
 class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
     def __init__(self):
@@ -59,7 +60,7 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm2_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm3_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
 
@@ -83,9 +84,15 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                         # so our next data will be located after position and thus we need to tell driver
                         # that our color goes after position and it is 12 bytes
                         "offset": float_size * 3,
+                    },
+                    {
+                        "semantic_name": "TEXCOORD",
+                        "semantic_index": 0,
+                        "format": spy.Format.rg32_float,
+                        "offset": float_size * 6,
                     }
                 ],
-                vertex_streams=[{"stride": float_size * 6}],
+                vertex_streams=[{"stride": float_size * 8}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
@@ -108,14 +115,35 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
             self.camera.vPosition[1] = 1.2
             self.camera.vPosition[2] = -2.3
 
+            self.camera.pitch = -15
+            self.camera.yaw = -40
+
             self.model = core.ModelNaive()
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_box_vertices_with_color_attrb(),
+                vertices=core.model_naive.model_get_box_vertices_with_color_uv_attrb(),
                 indicies=core.model_naive.model_get_box_indicies(),
                 # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
-                in_struct_size=24
+                # AND we add uv so 24 + 8 (2 uv components per byte) = 32
+                in_struct_size=32
+            )
+
+            self.model_texture = core.TextureNaive()
+
+            self.model_texture.load_from_file(device, textures_path / 'wall' / 'brick1.png')
+
+            # for texture we need to use sampler that will define how we will sample our texture in shader 
+            # (for example, if we want to use linear or point sampling, or how we will handle uv coordinates that are outside of 0-1 range and so on)
+            self.sampler = self.device.create_sampler(
+                {
+                    "address_u": spy.TextureAddressingMode.wrap,
+                    "address_v": spy.TextureAddressingMode.wrap,
+                    "address_w": spy.TextureAddressingMode.wrap,
+                    "min_filter": spy.TextureFilteringMode.linear,
+                    "mag_filter": spy.TextureFilteringMode.linear,
+                    "mip_filter": spy.TextureFilteringMode.linear,
+                }
             )
 
             self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
@@ -286,6 +314,9 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                 cursor.g_mView = self.camera.mView
                 cursor.g_mProjection = self.mProjection
 
+                cursor.g_texture = self.model_texture.texture
+                cursor.g_sampler = self.sampler
+
 
                 rp.set_render_state(
                         {
@@ -327,7 +358,8 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
            # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU
            self.device.wait()
            self.swapchain.unconfigure()
-
+           
+           del self.program
            del self.swapchain
            del self.pipeline
 
