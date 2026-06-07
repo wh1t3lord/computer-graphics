@@ -339,6 +339,8 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
             # you need to track manually when the changes happened and you apply update
             # otherwise you do translation, then 3 rotations per axis (because for simplicity and consistency we don't cover quaternions right now)
             # and you apply scale, it is costly operations for real-time system for CPU side! (keep that in mind)
+            # NOTE: in order to cause gimbal lock just set .y rotation component to = 90 degrees
+            # and start to change .x and .z and you will see that .z behave same as .x
             self.model.apply_tsr_no_quat(
                 self.model.vPosition,
                 self.model.vRotation,
