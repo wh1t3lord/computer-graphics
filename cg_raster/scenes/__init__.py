@@ -7,4 +7,5 @@ from scenes.srm2_cam import SceneRasterStaticModelNaiveBoxWithColorCamera
 from scenes.srm3_cam import SceneRasterStaticModelNaiveBoxWithTextureCamera
 from scenes.srm3_1_cam import SceneRasterStaticModelNaiveBoxWithTextureWireframeCamera
 from scenes.srm4_cam import SceneRasterStaticModelNaiveTextureBoxTransformCamera
+from scenes.srm4_1_cam import SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera
 from core import IScene

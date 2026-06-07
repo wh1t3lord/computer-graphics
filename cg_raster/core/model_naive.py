@@ -11,10 +11,6 @@ class ModelNaive:
         self.index_count = 0
 
         self.mModel = np.identity(4, dtype=np.float32)
-        self.mModel[0,3]=0.0
-        self.mModel[1,3]=0.0
-        self.mModel[2,3]=0.0
-        self.mModel[3,3]=1.0
 
         self.vPosition = np.zeros(3, dtype=np.float32)
         self.vRotation = np.zeros(3, dtype=np.float32)
@@ -22,22 +18,34 @@ class ModelNaive:
 
     # simpler and plain version
     # but not optimized and not effective
-    def apply_tsr_no_quat(
+    def apply_tsr_naive(
             self,
             translation,
             rotation,
             scale
     ):
         self.mModel = np.identity(4, dtype=np.float32)
-        self.mModel[0,3]=0.0
-        self.mModel[1,3]=0.0
-        self.mModel[2,3]=0.0
-        self.mModel[3,3]=1.0
 
         self.mModel = spy.math.translate(self.mModel, translation)
         self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[0]), np.array([1.0,0.0,0.0], dtype=np.float32))
         self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[1]), np.array([0.0,1.0,0.0], dtype=np.float32))
         self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[2]), np.array([0.0,0.0,1.0], dtype=np.float32))
+        self.mModel = spy.math.scale(self.mModel, scale)
+
+    def apply_tsr(self, translation, rotation, scale):
+        self.mModel = np.identity(4, dtype=np.float32)
+        self.mModel = spy.math.translate(self.mModel, translation)
+        
+        # Clamp X to avoid gimbal lock at X=90°
+        # With extrinsic Y-X-Z order, lock happens when X=90°
+        rotation[0] = np.clip(rotation[0], -89.0, 89.0)
+        
+        # Order: Y first, X second, Z last (Y-X-Z)
+        # This moves lock from Y=90° (common) to X=90° (rare)
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[1]), np.array([0.0,1.0,0.0], dtype=np.float32))  # Y
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[0]), np.array([1.0,0.0,0.0], dtype=np.float32))  # X
+        self.mModel = spy.math.rotate(self.mModel, spy.math.radians(rotation[2]), np.array([0.0,0.0,1.0], dtype=np.float32))  # Z
+        
         self.mModel = spy.math.scale(self.mModel, scale)
 
     def load_from_file(

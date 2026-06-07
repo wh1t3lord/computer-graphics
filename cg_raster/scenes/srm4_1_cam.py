@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import png
 
-class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
+class SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
@@ -21,7 +21,7 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
         self.ui_cpu_data_camera_position = None
         self.ui_cpu_data_camera_fov = None
         self.ui_cpu_switch_wireframe = None
-
+        self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
         self.wireframe_mode = False
 
         self.debug_ui_cam = False
@@ -38,12 +38,15 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
         ):
         if ui_main_window != None:            
             if self.ui_cpu_data_model_position != None:
+                self.ui_cpu_data_model_position.value = [0,0,0]
                 ui_main_window.add_child(self.ui_cpu_data_model_position)
 
             if self.ui_cpu_data_model_rotation != None:
+                self.ui_cpu_data_model_rotation.value = [0,0,0]
                 ui_main_window.add_child(self.ui_cpu_data_model_rotation)
 
             if self.ui_cpu_data_model_scale != None:
+                self.ui_cpu_data_model_scale.value = [1,1,1]
                 ui_main_window.add_child(self.ui_cpu_data_model_scale)
 
             if self.ui_print_camera_position != None:
@@ -290,12 +293,15 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
 
     def _ui_set_dragfloat3_model_position(self, value):
         self.model.vPosition[:3] = value
+        self.EditorTransformStatus[0] = True
 
     def _ui_set_dragfloat3_model_rotation(self, value):
         self.model.vRotation[:3] = value
+        self.EditorTransformStatus[1] = True
 
     def _ui_set_dragfloat3_model_scale(self, value):
         self.model.vScale[:3] = value
+        self.EditorTransformStatus[2] = True
 
     def _ui_set_checkbox_wireframe(self, value):
         self.wireframe_mode = value
@@ -335,17 +341,20 @@ class SceneRasterStaticModelNaiveTextureBoxTransformCamera(core.IScene):
 
 
         if self.model is not None:
-            # actually it is kinda wasteful operations since it applies every frame
-            # you need to track manually when the changes happened and you apply update
-            # otherwise you do translation, then 3 rotations per axis (because for simplicity and consistency we don't cover quaternions right now)
-            # and you apply scale, it is costly operations for real-time system for CPU side! (keep that in mind)
-            # NOTE: in order to cause gimbal lock just set .y rotation component to = 90 degrees
-            # and start to change .x and .z and you will see that .z behave same as .x
-            self.model.apply_tsr_naive(
-                self.model.vPosition,
-                self.model.vRotation,
-                self.model.vScale
-            )
+            if self.EditorTransformStatus[0] == True or self.EditorTransformStatus[1] == True or self.EditorTransformStatus[2] == True:
+                # actually it is kinda wasteful operations since it applies every frame
+                # you need to track manually when the changes happened and you apply update
+                # otherwise you do translation, then 3 rotations per axis (because for simplicity and consistency we don't cover quaternions right now)
+                # and you apply scale, it is costly operations for real-time system for CPU side! (keep that in mind)
+                # NOTE: mathematically it is impossible to implement a such setting where we operate degrees and apply rotations in order to not cause gimbal lock
+                # so we just use less high-frequent model where Y-X-Z and limit 'pitch' to prevent gimbal lock
+                self.model.apply_tsr(
+                    self.model.vPosition,
+                    self.model.vRotation,
+                    self.model.vScale
+                )
+
+                self.EditorTransformStatus = np.array([False,False,False], dtype=np.bool)
 
     def _render(
             self
