@@ -342,10 +342,6 @@ class SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera(core.IScene):
 
         if self.model is not None:
             if self.EditorTransformStatus[0] == True or self.EditorTransformStatus[1] == True or self.EditorTransformStatus[2] == True:
-                # actually it is kinda wasteful operations since it applies every frame
-                # you need to track manually when the changes happened and you apply update
-                # otherwise you do translation, then 3 rotations per axis (because for simplicity and consistency we don't cover quaternions right now)
-                # and you apply scale, it is costly operations for real-time system for CPU side! (keep that in mind)
                 # NOTE: mathematically it is impossible to implement a such setting where we operate degrees and apply rotations in order to not cause gimbal lock
                 # so we just use less high-frequent model where Y-X-Z and limit 'pitch' to prevent gimbal lock
                 self.model.apply_tsr(
