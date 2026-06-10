@@ -30,30 +30,6 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
             textures_path : Path,
             models_path : Path
         ):
-        if ui_main_window != None:            
-            if self.ui_cpu_data_model_position != None:
-                ui_main_window.add_child(self.ui_cpu_data_model_position)
-
-            if self.ui_print_camera_position != None:
-                ui_main_window.add_child(self.ui_print_camera_position)
-
-            if self.debug_ui_cam == True:
-                if self.ui_print_camera_orientation_matrix != None:
-                    ui_main_window.add_child(self.ui_print_camera_orientation_matrix)
-
-                if self.ui_cpu_data_camera_fov != None:
-                    ui_main_window.add_child(self.ui_cpu_data_camera_fov)
-
-                if self.ui_cpu_data_camera_position != None:
-                    ui_main_window.add_child(self.ui_cpu_data_camera_position)
-
-                if self.ui_print_camera_basis != None:
-                    ui_main_window.add_child(self.ui_print_camera_basis)
-
-                if self.ui_print_camera_yaw_and_pitch != None:
-                    ui_main_window.add_child(self.ui_print_camera_yaw_and_pitch)
-
-
         print(f'{self.__class__.__name__}: init called')
 
         self.device = device
@@ -132,50 +108,48 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
                 self.window = window
 
             if ui_main_window != None:
-                if  self.ui_cpu_data_model_position == None:
-                    self.ui_cpu_data_model_position = spy.ui.DragFloat3(
+                self.ui_cpu_data_model_position = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model position',
+                    self.model.vPosition[:3],
+                    self._ui_set_dragfloat3_model_position,
+                    0.01,
+                    -100.0,
+                    100.0
+                )
+
+                self.ui_print_camera_position = spy.ui.Text(
+                    ui_main_window,
+                    ''
+                )
+
+                if self.debug_ui_cam == True:
+
+                    self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
                         ui_main_window,
-                        'model position',
-                        self.model.vPosition[:3],
-                        self._ui_set_dragfloat3_model_position,
+                        'camera position',
+                        self.camera.vPosition,
+                        self._ui_set_dragfloat3_camera_position,
                         0.01,
                         -100.0,
                         100.0
                     )
 
-                if self.ui_print_camera_position == None:
-                    self.ui_print_camera_position = spy.ui.Text(
+   
+                    self.ui_cpu_data_camera_fov = spy.ui.DragFloat(
                         ui_main_window,
-                        ''
+                        'camera fov (degrees)',
+                        self.camera.fov,
+                        self._ui_set_dragfloat_camera_fov,
+                        0.01,
+                        10.0,
+                        120.0
                     )
 
-                if self.debug_ui_cam == True:
-                    if self.ui_cpu_data_camera_position == None:
-                        self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
-                            ui_main_window,
-                            'camera position',
-                            self.camera.vPosition,
-                            self._ui_set_dragfloat3_camera_position,
-                            0.01,
-                            -100.0,
-                            100.0
-                        )
 
-                    if self.ui_cpu_data_camera_fov == None:
-                        self.ui_cpu_data_camera_fov = spy.ui.DragFloat(
-                            ui_main_window,
-                            'camera fov (degrees)',
-                            self.camera.fov,
-                            self._ui_set_dragfloat_camera_fov,
-                            0.01,
-                            10.0,
-                            120.0
-                        )
-
-                    if self.ui_print_camera_basis == None:
-                        self.ui_print_camera_basis = spy.ui.Text(
-                            ui_main_window,
-                            r"""
+                    self.ui_print_camera_basis = spy.ui.Text(
+                        ui_main_window,
+                        r"""
     Camera basis:
 
     +Y (Up)
@@ -185,20 +159,20 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
     |  /
     | /
     +-------- +X (Right)
-                            """
-                        )
+                        """
+                    )
 
-                    if self.ui_print_camera_yaw_and_pitch == None:
-                        self.ui_print_camera_yaw_and_pitch = spy.ui.Text(
-                            ui_main_window,
-                            ''
-                        )
 
-                    if self.ui_print_camera_orientation_matrix == None:
-                        self.ui_print_camera_orientation_matrix = spy.ui.Text(
-                            ui_main_window,
-                            ''
-                        )
+                    self.ui_print_camera_yaw_and_pitch = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
+
+  
+                    self.ui_print_camera_orientation_matrix = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
 
 
 
@@ -347,6 +321,9 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
            self.ui_main_window.remove_child(self.ui_print_camera_position)
+
+           del self.ui_cpu_data_model_position
+           del self.ui_print_camera_position
            
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
@@ -354,6 +331,12 @@ class SceneRasterStaticModelNaiveBoxWithColorCamera(core.IScene):
             self.ui_main_window.remove_child(self.ui_cpu_data_camera_fov)
             self.ui_main_window.remove_child(self.ui_print_camera_yaw_and_pitch)
             self.ui_main_window.remove_child(self.ui_print_camera_basis)
+
+            del self.ui_print_camera_orientation_matrix
+            del self.ui_cpu_data_camera_position
+            del self.ui_cpu_data_camera_fov
+            del self.ui_print_camera_yaw_and_pitch
+            del self.ui_print_camera_basis
 
     def _on_resize(
             self,

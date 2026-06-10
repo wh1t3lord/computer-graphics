@@ -21,11 +21,6 @@ class SceneRasterEmpty(core.IScene):
             textures_path : Path,
             models_path : Path
         ):
-        # we don't want to reallocate/recreate already created and existed objects in internals of engine...
-        if ui_main_window != None and self.ui_text != None and self.ui_clear_color_slider != None:
-            ui_main_window.add_child(self.ui_text)
-            ui_main_window.add_child(self.ui_clear_color_slider)
-
         print(f'{self.__class__.__name__}: init called')
 
         self.device = device
@@ -38,7 +33,7 @@ class SceneRasterEmpty(core.IScene):
         self.clear_color : spy.float3 = [0,1,0]
         self.ui_main_window = ui_main_window
 
-        if self.ui != None and ui_main_window != None and self.ui_text == None and self.ui_clear_color_slider == None:
+        if self.ui != None and ui_main_window != None:
             
             self.ui_text = spy.ui.Text(ui_main_window, '\tSimple and start point of experimenting with slangpy!\n\tThis sample demonstrates how "clear render target" function works.')
 
@@ -89,6 +84,9 @@ class SceneRasterEmpty(core.IScene):
         if self.ui_main_window:
             self.ui_main_window.remove_child(self.ui_clear_color_slider)
             self.ui_main_window.remove_child(self.ui_text)
+
+            del self.ui_clear_color_slider
+            del self.ui_text
 
         print(f'{self.__class__.__name__}: resources are destroyed!')
 

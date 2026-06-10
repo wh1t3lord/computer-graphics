@@ -6,17 +6,27 @@ import slangpy as spy
 from pathlib import Path
 import numpy as np
 
-class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
+class SceneRasterAmbientLightCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
         self.ui_cpu_data_model_position = None
+        self.ui_cpu_data_model_rotation = None
+        self.ui_cpu_data_model_scale = None
         self.ui_print_camera_basis = None
         self.ui_print_camera_orientation_matrix = None
         self.ui_print_camera_yaw_and_pitch = None
         self.ui_print_camera_position = None
         self.ui_cpu_data_camera_position = None
         self.ui_cpu_data_camera_fov = None
+        self.ui_cpu_switch_wireframe = None
+        self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
+        self.wireframe_mode = False
+
+        self.light_ambient = core.LightAmbientNaive()
+
+        self.light_ambient.color = [1.0, 1.0, 0.0]
+        self.light_ambient.intensity = 0.3
 
         self.debug_ui_cam = False
 
@@ -35,7 +45,7 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm3_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm5_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             
 
@@ -77,6 +87,15 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                 # because if we have by default is None then we won't see back faces when
                 # rendering our model (box)
                 rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
+            )
+
+            self.pipeline_wireframe = self.device.create_render_pipeline(
+                program=self.program,
+                input_layout=input_layout,
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise}
             )
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
@@ -142,9 +161,56 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                     100.0
                 )
 
+                self.ui_cpu_data_model_rotation = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model rotation',
+                    self.model.vRotation[:3],
+                    self._ui_set_dragfloat3_model_rotation,
+                    0.1,
+                    -360.0,
+                    360.0
+                )
+
+                self.ui_cpu_data_model_scale = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model scale',
+                    self.model.vScale[:3],
+                    self._ui_set_dragfloat3_model_scale,
+                    0.01,
+                    0.0,
+                    10.0
+                )
+
                 self.ui_print_camera_position = spy.ui.Text(
                     ui_main_window,
                     ''
+                )
+
+                self.ui_cpu_switch_wireframe = spy.ui.CheckBox(
+                    ui_main_window,
+                    label='Wireframe',
+                    value=self.wireframe_mode,
+                    callback=self._ui_set_checkbox_wireframe
+                )
+
+                self.ui_light_ambient_color = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'ambient light color',
+                    self.light_ambient.color,
+                    self._ui_set_dragfloat3_ambient_light_color,
+                    0.01,
+                    0.0,
+                    1.0
+                )
+
+                self.ui_light_ambient_intensity = spy.ui.DragFloat(
+                    ui_main_window,
+                    'ambient light intensity',
+                    self.light_ambient.intensity,
+                    self._ui_set_dragfloat_ambient_light_intensity,
+                    0.01,
+                    0.0,
+                    1.0
                 )
 
                 if self.debug_ui_cam == True:
@@ -205,6 +271,24 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
 
     def _ui_set_dragfloat3_model_position(self, value):
         self.model.vPosition[:3] = value
+        self.EditorTransformStatus[0] = True
+
+    def _ui_set_dragfloat3_model_rotation(self, value):
+        self.model.vRotation[:3] = value
+        self.EditorTransformStatus[1] = True
+
+    def _ui_set_dragfloat3_model_scale(self, value):
+        self.model.vScale[:3] = value
+        self.EditorTransformStatus[2] = True
+
+    def _ui_set_checkbox_wireframe(self, value):
+        self.wireframe_mode = value
+
+    def _ui_set_dragfloat3_ambient_light_color(self, value):    
+        self.light_ambient.color = value
+
+    def _ui_set_dragfloat_ambient_light_intensity(self, value):
+        self.light_ambient.intensity = value
 
     def _update(
             self,
@@ -241,9 +325,15 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
 
 
         if self.model is not None:
-            self.model.mModel[0, 3] = self.model.vPosition[0]
-            self.model.mModel[1, 3] = self.model.vPosition[1]
-            self.model.mModel[2, 3] = self.model.vPosition[2]
+            if self.EditorTransformStatus[0] == True or self.EditorTransformStatus[1] == True or self.EditorTransformStatus[2] == True:
+                
+                self.model.apply_tsr(
+                    self.model.vPosition,
+                    self.model.vRotation,
+                    self.model.vScale
+                )
+
+                self.EditorTransformStatus = np.array([False,False,False], dtype=np.bool)
 
     def _render(
             self
@@ -267,7 +357,11 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                     ]
                 }) as rp:
                 
-                shader_object = rp.bind_pipeline(self.pipeline)
+
+                if self.wireframe_mode == False:
+                    shader_object = rp.bind_pipeline(self.pipeline)
+                else:
+                    shader_object = rp.bind_pipeline(self.pipeline_wireframe)
 
                 cursor = spy.ShaderCursor(shader_object)
 
@@ -285,6 +379,10 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                 cursor.g_texture = self.model_texture.texture
                 cursor.g_sampler = self.sampler
 
+                cursor.g_lightAmbient = {
+                    "color": self.light_ambient.color,
+                    "intensity": self.light_ambient.intensity
+                }
 
                 rp.set_render_state(
                         {
@@ -326,10 +424,11 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
            # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU
            self.device.wait()
            self.swapchain.unconfigure()
-           
-           del self.program
+
            del self.swapchain
+           del self.program
            del self.pipeline
+           del self.pipeline_wireframe
 
        if self.model is not None:
            if self.model.buffer_vertex is not None:
@@ -342,10 +441,18 @@ class SceneRasterStaticModelNaiveBoxWithTextureCamera(core.IScene):
                
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_rotation)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_scale)
            self.ui_main_window.remove_child(self.ui_print_camera_position)
+           self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
+           self.ui_main_window.remove_child(self.ui_light_ambient_color)
+           self.ui_main_window.remove_child(self.ui_light_ambient_intensity)    
 
            del self.ui_cpu_data_model_position
+           del self.ui_cpu_data_model_rotation
+           del self.ui_cpu_data_model_scale
            del self.ui_print_camera_position
+           del self.ui_cpu_switch_wireframe
            
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)

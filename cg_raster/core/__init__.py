@@ -4,3 +4,4 @@ from core.input import Input, eInputBindingsType, eInputAxisType, eInputDeviceTy
 from core.iscene import IScene
 from core.model_naive import ModelNaive
 from core.texture_naive import TextureNaive
+from core.light_naive import *
