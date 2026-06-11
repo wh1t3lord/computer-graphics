@@ -6,7 +6,7 @@ import slangpy as spy
 from pathlib import Path
 import numpy as np
 
-class SceneRasterAmbientLightCamera(core.IScene):
+class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
@@ -29,6 +29,7 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
         self.light_ambient.color = [1.0, 1.0, 0.0]
         self.light_ambient.intensity = 0.3
+        self.light_ambient.position = [0.0, 2.0, 0.0]
 
         self.debug_ui_cam = False
 
@@ -47,9 +48,10 @@ class SceneRasterAmbientLightCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm5_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm5_1_cam.slang'
+            shader_model_light_name = shaders_path / 'raster' / 'srm2_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
-            
+            self.program_model_light = self.device.load_program(str(shader_model_light_name), ['mainVertex', 'mainPixel'])
 
             float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)
             
@@ -73,13 +75,42 @@ class SceneRasterAmbientLightCamera(core.IScene):
                         "offset": float_size * 3,
                     },
                     {
+                        "semantic_name": "NORMAL",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        "offset": float_size * 6,
+                    },
+                    {
                         "semantic_name": "TEXCOORD",
                         "semantic_index": 0,
                         "format": spy.Format.rg32_float,
-                        "offset": float_size * 6,
+                        "offset": float_size * 9,
                     }
                 ],
-                vertex_streams=[{"stride": float_size * 8}],
+                vertex_streams=[{"stride": float_size * 11}],
+            )
+
+            input_layout_model_light = self.device.create_input_layout(
+                input_elements=[
+                    {
+                        "semantic_name": "POSITION",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
+                    },
+                ],
+                vertex_streams=[{"stride": float_size * 6}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
@@ -100,6 +131,13 @@ class SceneRasterAmbientLightCamera(core.IScene):
                 rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise}
             )
 
+            self.pipeline_model_light = self.device.create_render_pipeline(
+                program=self.program_model_light,
+                input_layout=input_layout_model_light,
+                targets=[{"format": spy.Format.rgba32_float}],
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
+            )
+
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
             self.input = core.Input()
@@ -118,11 +156,28 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_box_vertices_with_color_uv_attrb(),
+                vertices=core.model_naive.model_get_box_vertices_with_color_normal_uv_attrb(),
                 indicies=core.model_naive.model_get_box_indicies(),
-                # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
-                # AND we add uv so 24 + 8 (2 uv components per byte) = 32
-                in_struct_size=32
+                # pos = 3 * 4, col = 3 * 4, normal = 3 * 4, uv = 2 * 4, so total is 44 bytes for each vertex
+                in_struct_size=44
+            )
+
+            self.model_light = core.ModelNaive()
+
+            self.model_light.load_from_memory(
+                device=self.device,
+                vertices=core.model_naive.model_get_box_vertices_with_override_color_attrb(self.light_ambient.color),
+                indicies=core.model_naive.model_get_box_indicies(),
+                in_struct_size=24
+            )
+
+            self.model_light.vScale *= 0.2
+            self.model_light.vPosition = self.light_ambient.position
+
+            self.model_light.apply_tsr(
+                self.model_light.vPosition,
+                self.model_light.vRotation,
+                self.model_light.vScale
             )
 
             self.model_texture = core.TextureNaive()
@@ -359,6 +414,27 @@ class SceneRasterAmbientLightCamera(core.IScene):
                     ]
                 }) as rp:
                 
+                shader_object = rp.bind_pipeline(self.pipeline_model_light)
+
+                cursor = spy.ShaderCursor(shader_object)
+
+                cursor.g_mModel = self.model_light.mModel
+                cursor.g_mView = self.camera.mView
+                cursor.g_mProjection = self.mProjection
+
+                rp.set_render_state(
+                        {
+                            "viewports": [spy.Viewport.from_size(texture_surface.width, texture_surface.height)],
+                            "scissor_rects": [
+                                spy.ScissorRect.from_size(texture_surface.width, texture_surface.height)
+                            ],
+                            "vertex_buffers": [self.model_light.buffer_vertex],
+                            "index_buffer": self.model_light.buffer_index,
+                            "index_format": spy.IndexFormat.uint32,
+                        }
+                    )
+                rp.draw_indexed({"vertex_count": self.model_light.index_count})
+
 
                 if self.wireframe_mode == False:
                     shader_object = rp.bind_pipeline(self.pipeline)
@@ -383,7 +459,8 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
                 cursor.g_lightAmbient = {
                     "color": self.light_ambient.color,
-                    "intensity": self.light_ambient.intensity
+                    "intensity": self.light_ambient.intensity,
+                    "worldPosition": self.light_ambient.position
                 }
 
                 rp.set_render_state(
@@ -429,8 +506,10 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
            del self.swapchain
            del self.program
+           del self.program_model_light
            del self.pipeline
            del self.pipeline_wireframe
+           del self.pipeline_model_light
 
        if self.model is not None:
            if self.model.buffer_vertex is not None:
@@ -440,6 +519,15 @@ class SceneRasterAmbientLightCamera(core.IScene):
            if self.model.buffer_index is not None:
                del self.model.buffer_index
                self.model.buffer_index = None
+
+       if self.model_light is not None:
+           if self.model_light.buffer_vertex is not None:
+               del self.model_light.buffer_vertex
+               self.model_light.buffer_vertex = None
+
+           if self.model_light.buffer_index is not None:
+               del self.model_light.buffer_index
+               self.model_light.buffer_index = None
                
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)

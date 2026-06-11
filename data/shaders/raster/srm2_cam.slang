@@ -36,7 +36,7 @@ OUT_VERTEX mainVertex(IN_VERTEX in_args)
 OUT_PIXEL mainPixel(OUT_VERTEX in_args)
 {
     OUT_PIXEL result;
-    result.color = float4(in_args.color.xyz, 1.0);
+    result.color = float4(in_args.color.rgb, 1.0);
 
     return result;
 }

@@ -50,7 +50,8 @@ class App:
             "3d - static box with color & texture & camera (wireframe)": scenes.SceneRasterStaticModelNaiveBoxWithTextureWireframeCamera(),
             "3d - static box with texture & transform (rotation has gimbal lock) & camera": scenes.SceneRasterStaticModelNaiveTextureBoxTransformCamera(),
             "3d - static box with texture & transform (rotation no gimbal lock) & camera": scenes.SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera(),
-            "3d - ambient light": scenes.SceneRasterAmbientLightCamera()
+            "3d - ambient lighting": scenes.SceneRasterAmbientLightCamera(),
+            "3d - diffuse lighting": scenes.SceneRasterAmbientAndDiffuseLightCamera()
         }
 
     def __window_callback_resize(

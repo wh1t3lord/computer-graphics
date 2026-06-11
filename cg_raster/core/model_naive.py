@@ -193,6 +193,66 @@ def model_get_box_vertices_with_color_attrb():
 
     return vertices
 
+def model_get_box_vertices_with_override_color_attrb(color):
+
+    c_front  = [1, 0, 0]   # RED
+    c_back   = [0, 1, 0]   # GREEN
+    c_right  = [1, 1, 0]   # YELLOW
+    c_left   = [0, 0, 1]   # BLUE
+    c_top    = [1, 1, 1]   # WHITE
+    c_bottom = [1, 0, 1]   # MAGENTA
+
+    if color is not None:
+        c_front  = color
+        c_back   = color
+        c_right  = color
+        c_left   = color
+        c_top    = color
+        c_bottom = color
+
+    vertices = np.array(
+        [
+            # Front face (z = -1) — RED
+            -1, -1, -1,  c_front[0], c_front[1], c_front[2],   # 0
+             1, -1, -1,  c_front[0], c_front[1], c_front[2],   # 1
+             1,  1, -1,  c_front[0], c_front[1], c_front[2],   # 2
+            -1,  1, -1,  c_front[0], c_front[1], c_front[2],   # 3
+
+            # Back face (z = 1) — GREEN
+             1, -1,  1,  c_back[0], c_back[1], c_back[2],   # 4
+            -1, -1,  1,  c_back[0], c_back[1], c_back[2],   # 5
+            -1,  1,  1,  c_back[0], c_back[1], c_back[2],   # 6
+             1,  1,  1,  c_back[0], c_back[1], c_back[2],   # 7
+
+            # Right face (x = 1) — YELLOW
+             1, -1, -1,  c_right[0], c_right[1], c_right[2],   # 8
+             1, -1,  1,  c_right[0], c_right[1], c_right[2],   # 9
+             1,  1,  1,  c_right[0], c_right[1], c_right[2],   # 10
+             1,  1, -1,  c_right[0], c_right[1], c_right[2],   # 11
+
+            # Left face (x = -1) — BLUE
+            -1, -1,  1,  c_left[0], c_left[1], c_left[2],   # 12
+            -1, -1, -1,  c_left[0], c_left[1], c_left[2],   # 13
+            -1,  1, -1,  c_left[0], c_left[1], c_left[2],   # 14
+            -1,  1,  1,  c_left[0], c_left[1], c_left[2],   # 15
+
+            # Top face (y = 1) — WHITE
+            -1,  1, -1,  c_top[0], c_top[1], c_top[2],   # 16
+             1,  1, -1,  c_top[0], c_top[1], c_top[2],   # 17
+             1,  1,  1,  c_top[0], c_top[1], c_top[2],   # 18
+            -1,  1,  1,  c_top[0], c_top[1], c_top[2],   # 19
+
+            # Bottom face (y = -1) — MAGENTA
+            -1, -1,  1,  c_bottom[0], c_bottom[1], c_bottom[2],   # 20
+             1, -1,  1,  c_bottom[0], c_bottom[1], c_bottom[2],   # 21
+             1, -1, -1,  c_bottom[0], c_bottom[1], c_bottom[2],   # 22
+            -1, -1, -1,  c_bottom[0], c_bottom[1], c_bottom[2],   # 23
+        ],
+        dtype=np.float32
+    )
+
+    return vertices
+
 
 def model_get_box_vertices_with_color_uv_attrb():
     vertices = np.array(
@@ -232,6 +292,50 @@ def model_get_box_vertices_with_color_uv_attrb():
              1, -1,  1,  1, 0, 1,  1, 1,   # 21
              1, -1, -1,  1, 0, 1,  1, 0,   # 22
             -1, -1, -1,  1, 0, 1,  0, 0,   # 23
+        ],
+        dtype=np.float32
+    )
+
+    return vertices
+
+def model_get_box_vertices_with_color_normal_uv_attrb():
+    vertices = np.array(
+        [
+            # Front face (z = -1) — RED, normal = [0, 0, -1]
+            -1, -1, -1,  1, 0, 0,  0, 0, -1,  0, 1,   # 0
+             1, -1, -1,  1, 0, 0,  0, 0, -1,  1, 1,   # 1
+             1,  1, -1,  1, 0, 0,  0, 0, -1,  1, 0,   # 2
+            -1,  1, -1,  1, 0, 0,  0, 0, -1,  0, 0,   # 3
+
+            # Back face (z = 1) — GREEN, normal = [0, 0, 1]
+             1, -1,  1,  0, 1, 0,  0, 0, 1,  0, 1,   # 4
+            -1, -1,  1,  0, 1, 0,  0, 0, 1,  1, 1,   # 5
+            -1,  1,  1,  0, 1, 0,  0, 0, 1,  1, 0,   # 6
+             1,  1,  1,  0, 1, 0,  0, 0, 1,  0, 0,   # 7
+
+            # Right face (x = 1) — YELLOW, normal = [1, 0, 0]
+             1, -1, -1,  1, 1, 0,  1, 0, 0,  0, 1,   # 8
+             1, -1,  1,  1, 1, 0,  1, 0, 0,  1, 1,   # 9
+             1,  1,  1,  1, 1, 0,  1, 0, 0,  1, 0,   # 10
+             1,  1, -1,  1, 1, 0,  1, 0, 0,  0, 0,   # 11
+
+            # Left face (x = -1) — BLUE, normal = [-1, 0, 0]
+            -1, -1,  1,  0, 0, 1,  -1, 0, 0,  0, 1,   # 12
+            -1, -1, -1,  0, 0, 1,  -1, 0, 0,  1, 1,   # 13
+            -1,  1, -1,  0, 0, 1,  -1, 0, 0,  1, 0,   # 14
+            -1,  1,  1,  0, 0, 1,  -1, 0, 0,  0, 0,   # 15
+
+            # Top face (y = 1) — WHITE, normal = [0, 1, 0]
+            -1,  1, -1,  1, 1, 1,  0, 1, 0,  0, 1,   # 16
+             1,  1, -1,  1, 1, 1,  0, 1, 0,  1, 1,   # 17
+             1,  1,  1,  1, 1, 1,  0, 1, 0,  1, 0,   # 18
+            -1,  1,  1,  1, 1, 1,  0, 1, 0,  0, 0,   # 19
+
+            # Bottom face (y = -1) — MAGENTA, normal = [0, -1, 0]
+            -1, -1,  1,  1, 0, 1,  0, -1, 0,  0, 1,   # 20
+             1, -1,  1,  1, 0, 1,  0, -1, 0,  1, 1,   # 21
+             1, -1, -1,  1, 0, 1,  0, -1, 0,  1, 0,   # 22
+            -1, -1, -1,  1, 0, 1,  0, -1, 0,  0, 0,   # 23
         ],
         dtype=np.float32
     )
