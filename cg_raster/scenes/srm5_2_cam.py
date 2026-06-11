@@ -185,7 +185,7 @@ class SceneRasterAmbientAndDiffuseAndSpecularLightCamera(core.IScene):
 
             self.light_ambient.color = [1.0, 1.0, 0.0]
             self.light_ambient.intensity = 0.1
-            self.light_ambient.position = [1.7, 1.370, 0.0]
+            self.light_ambient.position = [1.7, 1.370, -1.11]
 
             self.model_light = core.ModelNaive()
 
