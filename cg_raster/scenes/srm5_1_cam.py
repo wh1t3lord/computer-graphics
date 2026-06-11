@@ -32,6 +32,8 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
         self.light_ambient.intensity = 0.3
         self.light_ambient.position = [0.0, 2.0, 0.0]
 
+        self.depth_texture = None
+
         self.debug_ui_cam = False
 
     def _init(
@@ -120,7 +122,15 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
                 targets=[{"format": spy.Format.rgba32_float}],
                 # because if we have by default is None then we won't see back faces when
                 # rendering our model (box)
-                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
             )
 
             self.pipeline_wireframe = self.device.create_render_pipeline(
@@ -129,14 +139,28 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
                 targets=[{"format": spy.Format.rgba32_float}],
                 # because if we have by default is None then we won't see back faces when
                 # rendering our model (box)
-                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise}
+                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
             )
 
             self.pipeline_model_light = self.device.create_render_pipeline(
                 program=self.program_model_light,
                 input_layout=input_layout_model_light,
                 targets=[{"format": spy.Format.rgba32_float}],
-                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
             )
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
@@ -207,6 +231,18 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
 
                 self.ui = ui
                 self.window = window
+
+                self.depth_texture = self.device.create_texture(
+                    type=spy.TextureType.texture_2d,
+                    format=spy.Format.d32_float_s8_uint,
+                    width=window.width,
+                    height=window.height,
+                    usage=spy.TextureUsage.depth_stencil,
+                    memory_type=spy.MemoryType.device_local
+                )
+
+                self.depth_texture_view = self.depth_texture.create_view()
+
 
             if ui_main_window != None:
                 self.ui_cpu_data_model_position = spy.ui.DragFloat3(
@@ -426,15 +462,31 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
             # drawing our triangle
 
             render_target_view = texture_surface.create_view({})
-            command_encoder.clear_texture_float(texture_surface, clear_value=[0,0,0,1])
+         #   command_encoder.clear_texture_float(texture_surface, clear_value=[0,0,0,1])
                 
             with command_encoder.begin_render_pass(
                 {
                     "color_attachments": [
                         {"view": render_target_view}
-                    ]
+                    ],
+                    "depth_stencil_attachment": {
+                        "view": self.depth_texture_view,
+                        "depth_load_op": spy.LoadOp.clear,
+                        "depth_store_op": spy.StoreOp.dont_care,
+                        "depth_clear_value": 1.0,
+                        "stencil_load_op": spy.LoadOp.clear,
+                        "stencil_store_op": spy.StoreOp.dont_care,
+                        "stencil_clear_value": 0
+                    }
                 }) as rp:
                 
+                self.mProjection = spy.math.perspective(
+                    spy.math.radians(self.camera.fov),
+                    texture_surface.width / texture_surface.height,
+                    0.1,
+                    100.0
+                )
+
                 shader_object = rp.bind_pipeline(self.pipeline_model_light)
 
                 cursor = spy.ShaderCursor(shader_object)
@@ -463,13 +515,6 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
                     shader_object = rp.bind_pipeline(self.pipeline_wireframe)
 
                 cursor = spy.ShaderCursor(shader_object)
-
-                self.mProjection = spy.math.perspective(
-                    spy.math.radians(self.camera.fov),
-                    texture_surface.width / texture_surface.height,
-                    0.1,
-                    100.0
-                )
 
                 cursor.g_mModel = self.model.mModel
                 cursor.g_mView = self.camera.mView
@@ -524,6 +569,9 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
            # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU
            self.device.wait()
            self.swapchain.unconfigure()
+
+           del self.depth_texture_view
+           del self.depth_texture
 
            del self.swapchain
            del self.program
@@ -589,6 +637,23 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
         ):
         if self.device:
             self.device.wait()
+
+            if self.depth_texture is not None:
+                del self.depth_texture
+
+            if self.depth_texture_view is not None:
+                del self.depth_texture_view
+
+            self.depth_texture = self.device.create_texture(
+                type=spy.TextureType.texture_2d,
+                format=spy.Format.d32_float_s8_uint,
+                width=width,
+                height=height,
+                usage=spy.TextureUsage.depth_stencil,
+                memory_type=spy.MemoryType.device_local
+            )
+
+            self.depth_texture_view = self.depth_texture.create_view()
 
         if width > 0 and height > 0:
             self.swapchain.configure(width=width,height=height)
