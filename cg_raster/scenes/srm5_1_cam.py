@@ -26,12 +26,6 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
         self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
         self.wireframe_mode = False
 
-        self.light_ambient = core.LightAmbientNaive()
-
-        self.light_ambient.color = [1.0, 1.0, 0.0]
-        self.light_ambient.intensity = 0.3
-        self.light_ambient.position = [0.0, 2.0, 0.0]
-
         self.depth_texture = None
 
         self.debug_ui_cam = False
@@ -186,6 +180,13 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
                 # pos = 3 * 4, col = 3 * 4, normal = 3 * 4, uv = 2 * 4, so total is 44 bytes for each vertex
                 in_struct_size=44
             )
+
+            self.light_ambient = core.LightAmbientNaive()
+
+            self.light_ambient.color = [1.0, 1.0, 0.0]
+            self.light_ambient.intensity = 0.3
+            self.light_ambient.position = [0.0, 2.0, 0.0]
+
 
             self.model_light = core.ModelNaive()
 

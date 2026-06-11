@@ -6,7 +6,7 @@ import slangpy as spy
 from pathlib import Path
 import numpy as np
 
-class SceneRasterAmbientLightCamera(core.IScene):
+class SceneRasterAmbientAndDiffuseAndSpecularLightCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
@@ -22,8 +22,12 @@ class SceneRasterAmbientLightCamera(core.IScene):
         self.ui_cpu_switch_wireframe = None
         self.ui_cpu_light_ambient_color = None
         self.ui_cpu_light_ambient_intensity = None
+        self.ui_cpu_light_position = None
         self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
         self.wireframe_mode = False
+
+        self.depth_texture = None
+
         self.debug_ui_cam = False
 
     def _init(
@@ -41,9 +45,10 @@ class SceneRasterAmbientLightCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm5_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm5_2_cam.slang'
+            shader_model_light_name = shaders_path / 'raster' / 'srm2_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
-            
+            self.program_model_light = self.device.load_program(str(shader_model_light_name), ['mainVertex', 'mainPixel'])
 
             float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)
             
@@ -67,13 +72,42 @@ class SceneRasterAmbientLightCamera(core.IScene):
                         "offset": float_size * 3,
                     },
                     {
+                        "semantic_name": "NORMAL",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        "offset": float_size * 6,
+                    },
+                    {
                         "semantic_name": "TEXCOORD",
                         "semantic_index": 0,
                         "format": spy.Format.rg32_float,
-                        "offset": float_size * 6,
+                        "offset": float_size * 9,
                     }
                 ],
-                vertex_streams=[{"stride": float_size * 8}],
+                vertex_streams=[{"stride": float_size * 11}],
+            )
+
+            input_layout_model_light = self.device.create_input_layout(
+                input_elements=[
+                    {
+                        "semantic_name": "POSITION",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
+                    },
+                ],
+                vertex_streams=[{"stride": float_size * 6}],
             )
 
             self.pipeline = self.device.create_render_pipeline(
@@ -82,7 +116,15 @@ class SceneRasterAmbientLightCamera(core.IScene):
                 targets=[{"format": spy.Format.rgba32_float}],
                 # because if we have by default is None then we won't see back faces when
                 # rendering our model (box)
-                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise}
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
             )
 
             self.pipeline_wireframe = self.device.create_render_pipeline(
@@ -91,17 +133,33 @@ class SceneRasterAmbientLightCamera(core.IScene):
                 targets=[{"format": spy.Format.rgba32_float}],
                 # because if we have by default is None then we won't see back faces when
                 # rendering our model (box)
-                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise}
+                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
+            )
+
+            self.pipeline_model_light = self.device.create_render_pipeline(
+                program=self.program_model_light,
+                input_layout=input_layout_model_light,
+                targets=[{"format": spy.Format.rgba32_float}],
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
             )
 
             self.mProjection : spy.math.float4x4 = spy.math.float4x4()
 
             self.input = core.Input()
-
-            self.light_ambient = core.LightAmbientNaive()
-
-            self.light_ambient.color = [1.0, 1.0, 0.0]
-            self.light_ambient.intensity = 0.3
 
             # let's create our camera based on euler rotations
             self.camera = core.Camera(self.input)
@@ -117,11 +175,34 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_box_vertices_with_color_uv_attrb(),
+                vertices=core.model_naive.model_get_sphere_vertices_with_color_normal_uv_attrb(radius=1.0, stacks=16, slices=128),
+                indicies=core.model_naive.model_get_sphere_indices(stacks=16, slices=128),
+                # pos = 3 * 4, col = 3 * 4, normal = 3 * 4, uv = 2 * 4, so total is 44 bytes for each vertex
+                in_struct_size=44
+            )
+
+            self.light_ambient = core.LightAmbientNaive()
+
+            self.light_ambient.color = [1.0, 1.0, 0.0]
+            self.light_ambient.intensity = 0.1
+            self.light_ambient.position = [1.7, 1.370, 0.0]
+
+            self.model_light = core.ModelNaive()
+
+            self.model_light.load_from_memory(
+                device=self.device,
+                vertices=core.model_naive.model_get_box_vertices_with_override_color_attrb(self.light_ambient.color),
                 indicies=core.model_naive.model_get_box_indicies(),
-                # because 3 position components per byte (3 * 4 = 12) + 3 color components per byte (3 * 4 = 12) in total 12 + 12 = 24
-                # AND we add uv so 24 + 8 (2 uv components per byte) = 32
-                in_struct_size=32
+                in_struct_size=24
+            )
+
+            self.model_light.vScale *= 0.2
+            self.model_light.vPosition = self.light_ambient.position
+
+            self.model_light.apply_tsr(
+                self.model_light.vPosition,
+                self.model_light.vRotation,
+                self.model_light.vScale
             )
 
             self.model_texture = core.TextureNaive()
@@ -150,6 +231,18 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
                 self.ui = ui
                 self.window = window
+
+                self.depth_texture = self.device.create_texture(
+                    type=spy.TextureType.texture_2d,
+                    format=spy.Format.d32_float_s8_uint,
+                    width=window.width,
+                    height=window.height,
+                    usage=spy.TextureUsage.depth_stencil,
+                    memory_type=spy.MemoryType.device_local
+                )
+
+                self.depth_texture_view = self.depth_texture.create_view()
+
 
             if ui_main_window != None:
                 self.ui_cpu_data_model_position = spy.ui.DragFloat3(
@@ -212,6 +305,16 @@ class SceneRasterAmbientLightCamera(core.IScene):
                     0.01,
                     0.0,
                     1.0
+                )
+
+                self.ui_cpu_light_position = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'ambient light position',
+                    self.light_ambient.position,
+                    self._ui_set_dragfloat3_ambient_light_position,
+                    0.01,
+                    -100.0,
+                    100.0
                 )
 
                 if self.debug_ui_cam == True:
@@ -291,6 +394,16 @@ class SceneRasterAmbientLightCamera(core.IScene):
     def _ui_set_dragfloat_ambient_light_intensity(self, value):
         self.light_ambient.intensity = value
 
+    def _ui_set_dragfloat3_ambient_light_position(self, value):
+        self.light_ambient.position = value
+        self.model_light.vPosition = value
+
+        self.model_light.apply_tsr(
+            self.model_light.vPosition,
+            self.model_light.vRotation,
+            self.model_light.vScale
+        )
+
     def _update(
             self,
             dt : spy.math.float1
@@ -349,15 +462,52 @@ class SceneRasterAmbientLightCamera(core.IScene):
             # drawing our triangle
 
             render_target_view = texture_surface.create_view({})
-            command_encoder.clear_texture_float(texture_surface, clear_value=[0,0,0,1])
+         #   command_encoder.clear_texture_float(texture_surface, clear_value=[0,0,0,1])
                 
             with command_encoder.begin_render_pass(
                 {
                     "color_attachments": [
                         {"view": render_target_view}
-                    ]
+                    ],
+                    "depth_stencil_attachment": {
+                        "view": self.depth_texture_view,
+                        "depth_load_op": spy.LoadOp.clear,
+                        "depth_store_op": spy.StoreOp.dont_care,
+                        "depth_clear_value": 1.0,
+                        "stencil_load_op": spy.LoadOp.clear,
+                        "stencil_store_op": spy.StoreOp.dont_care,
+                        "stencil_clear_value": 0
+                    }
                 }) as rp:
                 
+                self.mProjection = spy.math.perspective(
+                    spy.math.radians(self.camera.fov),
+                    texture_surface.width / texture_surface.height,
+                    0.1,
+                    100.0
+                )
+
+                shader_object = rp.bind_pipeline(self.pipeline_model_light)
+
+                cursor = spy.ShaderCursor(shader_object)
+
+                cursor.g_mModel = self.model_light.mModel
+                cursor.g_mView = self.camera.mView
+                cursor.g_mProjection = self.mProjection
+
+                rp.set_render_state(
+                        {
+                            "viewports": [spy.Viewport.from_size(texture_surface.width, texture_surface.height)],
+                            "scissor_rects": [
+                                spy.ScissorRect.from_size(texture_surface.width, texture_surface.height)
+                            ],
+                            "vertex_buffers": [self.model_light.buffer_vertex],
+                            "index_buffer": self.model_light.buffer_index,
+                            "index_format": spy.IndexFormat.uint32,
+                        }
+                    )
+                rp.draw_indexed({"vertex_count": self.model_light.index_count})
+
 
                 if self.wireframe_mode == False:
                     shader_object = rp.bind_pipeline(self.pipeline)
@@ -366,23 +516,18 @@ class SceneRasterAmbientLightCamera(core.IScene):
 
                 cursor = spy.ShaderCursor(shader_object)
 
-                self.mProjection = spy.math.perspective(
-                    spy.math.radians(self.camera.fov),
-                    texture_surface.width / texture_surface.height,
-                    0.1,
-                    100.0
-                )
-
                 cursor.g_mModel = self.model.mModel
                 cursor.g_mView = self.camera.mView
                 cursor.g_mProjection = self.mProjection
+                cursor.g_vCameraWorldPosition = self.camera.vPosition
 
                 cursor.g_texture = self.model_texture.texture
                 cursor.g_sampler = self.sampler
 
                 cursor.g_lightAmbient = {
                     "color": self.light_ambient.color,
-                    "intensity": self.light_ambient.intensity
+                    "intensity": self.light_ambient.intensity,
+                    "worldPosition": self.light_ambient.position
                 }
 
                 rp.set_render_state(
@@ -426,10 +571,15 @@ class SceneRasterAmbientLightCamera(core.IScene):
            self.device.wait()
            self.swapchain.unconfigure()
 
+           del self.depth_texture_view
+           del self.depth_texture
+
            del self.swapchain
            del self.program
+           del self.program_model_light
            del self.pipeline
            del self.pipeline_wireframe
+           del self.pipeline_model_light
 
        if self.model is not None:
            if self.model.buffer_vertex is not None:
@@ -439,6 +589,15 @@ class SceneRasterAmbientLightCamera(core.IScene):
            if self.model.buffer_index is not None:
                del self.model.buffer_index
                self.model.buffer_index = None
+
+       if self.model_light is not None:
+           if self.model_light.buffer_vertex is not None:
+               del self.model_light.buffer_vertex
+               self.model_light.buffer_vertex = None
+
+           if self.model_light.buffer_index is not None:
+               del self.model_light.buffer_index
+               self.model_light.buffer_index = None
                
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
@@ -447,7 +606,8 @@ class SceneRasterAmbientLightCamera(core.IScene):
            self.ui_main_window.remove_child(self.ui_print_camera_position)
            self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
            self.ui_main_window.remove_child(self.ui_cpu_light_ambient_color)
-           self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity)    
+           self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity)
+           self.ui_main_window.remove_child(self.ui_cpu_light_position)    
 
            del self.ui_cpu_data_model_position
            del self.ui_cpu_data_model_rotation
@@ -456,6 +616,7 @@ class SceneRasterAmbientLightCamera(core.IScene):
            del self.ui_cpu_switch_wireframe
            del self.ui_cpu_light_ambient_intensity
            del self.ui_cpu_light_ambient_color
+           del self.ui_cpu_light_position
            
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
@@ -477,6 +638,23 @@ class SceneRasterAmbientLightCamera(core.IScene):
         ):
         if self.device:
             self.device.wait()
+
+            if self.depth_texture is not None:
+                del self.depth_texture
+
+            if self.depth_texture_view is not None:
+                del self.depth_texture_view
+
+            self.depth_texture = self.device.create_texture(
+                type=spy.TextureType.texture_2d,
+                format=spy.Format.d32_float_s8_uint,
+                width=width,
+                height=height,
+                usage=spy.TextureUsage.depth_stencil,
+                memory_type=spy.MemoryType.device_local
+            )
+
+            self.depth_texture_view = self.depth_texture.create_view()
 
         if width > 0 and height > 0:
             self.swapchain.configure(width=width,height=height)

@@ -341,3 +341,91 @@ def model_get_box_vertices_with_color_normal_uv_attrb():
     )
 
     return vertices
+
+def model_get_sphere_vertices_with_color_normal_uv_attrb(radius=1.0, stacks=16, slices=16):
+    """
+    Generate a UV sphere with per-vertex position, color, normal, and UV attributes.
+    
+    Vertex layout (11 floats per vertex):
+        px, py, pz,  r, g, b,  nx, ny, nz,  u, v
+    
+    Parameters
+    ----------
+    radius : float
+        Sphere radius.
+    stacks : int
+        Number of latitude divisions (>= 2).
+    slices : int
+        Number of longitude divisions (>= 3).
+    
+    Returns
+    -------
+    np.ndarray
+        Flat float32 array of shape ((stacks+1)*(slices+1)*11,).
+    """
+    num_vertices = (stacks + 1) * (slices + 1)
+    vertices = np.zeros(num_vertices * 11, dtype=np.float32)
+    
+    vidx = 0
+    for i in range(stacks + 1):
+        phi = np.pi * i / stacks          # 0 = north pole, pi = south pole
+        for j in range(slices + 1):
+            theta = 2.0 * np.pi * j / slices  # 0 .. 2pi
+            
+            # Position (y-up)
+            x = radius * np.sin(phi) * np.cos(theta)
+            y = radius * np.cos(phi)
+            z = radius * np.sin(phi) * np.sin(theta)
+            
+            # Normal = normalized position (automatically correct for sphere)
+            nx = np.sin(phi) * np.cos(theta)
+            ny = np.cos(phi)
+            nz = np.sin(phi) * np.sin(theta)
+            
+            # Color — white by default.
+            # Swap the two lines below for normal-based RGB coloring:
+            # r, g, b = (nx + 1.0) * 0.5, (ny + 1.0) * 0.5, (nz + 1.0) * 0.5
+            r, g, b = 1.0, 1.0, 1.0
+            
+            # UV
+            u = j / slices
+            v = i / stacks
+            
+            vertices[vidx:vidx + 11] = [x, y, z, r, g, b, nx, ny, nz, u, v]
+            vidx += 11
+    
+    return vertices
+
+
+def model_get_sphere_indices(stacks=16, slices=16):
+    """
+    Generate triangle indices for the UV sphere.
+    
+    Winding is CCW when viewed from outside. Call with the same
+    stacks/slices values used for the vertex function.
+    
+    Parameters
+    ----------
+    stacks : int
+        Number of latitude divisions.
+    slices : int
+        Number of longitude divisions.
+    
+    Returns
+    -------
+    np.ndarray
+        Flat uint32 array of triangle indices.
+    """
+    indices = []
+    for i in range(stacks):
+        for j in range(slices):
+            a = i * (slices + 1) + j
+            b = (i + 1) * (slices + 1) + j
+            c = i * (slices + 1) + (j + 1)
+            d = (i + 1) * (slices + 1) + (j + 1)
+            
+            # Two CCW triangles per quad
+            indices.extend([a, c, b])
+            indices.extend([c, d, b])
+    
+    return np.array(indices, dtype=np.uint32)

@@ -10,4 +10,5 @@ from scenes.srm4_cam import SceneRasterStaticModelNaiveTextureBoxTransformCamera
 from scenes.srm4_1_cam import SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera
 from scenes.srm5_cam import SceneRasterAmbientLightCamera
 from scenes.srm5_1_cam import SceneRasterAmbientAndDiffuseLightCamera
+from scenes.srm5_2_cam import SceneRasterAmbientAndDiffuseAndSpecularLightCamera
 from core import IScene
