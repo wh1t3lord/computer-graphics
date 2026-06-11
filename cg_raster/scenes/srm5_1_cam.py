@@ -22,6 +22,7 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
         self.ui_cpu_switch_wireframe = None
         self.ui_cpu_light_ambient_color = None
         self.ui_cpu_light_ambient_intensity = None
+        self.ui_cpu_light_position = None
         self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
         self.wireframe_mode = False
 
@@ -270,6 +271,16 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
                     1.0
                 )
 
+                self.ui_cpu_light_position = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'ambient light position',
+                    self.light_ambient.position,
+                    self._ui_set_dragfloat3_ambient_light_position,
+                    0.01,
+                    -100.0,
+                    100.0
+                )
+
                 if self.debug_ui_cam == True:
                     self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
                         ui_main_window,
@@ -346,6 +357,16 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
 
     def _ui_set_dragfloat_ambient_light_intensity(self, value):
         self.light_ambient.intensity = value
+
+    def _ui_set_dragfloat3_ambient_light_position(self, value):
+        self.light_ambient.position = value
+        self.model_light.vPosition = value
+
+        self.model_light.apply_tsr(
+            self.model_light.vPosition,
+            self.model_light.vRotation,
+            self.model_light.vScale
+        )
 
     def _update(
             self,
@@ -536,7 +557,8 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
            self.ui_main_window.remove_child(self.ui_print_camera_position)
            self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
            self.ui_main_window.remove_child(self.ui_cpu_light_ambient_color)
-           self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity)    
+           self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity)
+           self.ui_main_window.remove_child(self.ui_cpu_light_position)    
 
            del self.ui_cpu_data_model_position
            del self.ui_cpu_data_model_rotation
@@ -545,6 +567,7 @@ class SceneRasterAmbientAndDiffuseLightCamera(core.IScene):
            del self.ui_cpu_switch_wireframe
            del self.ui_cpu_light_ambient_intensity
            del self.ui_cpu_light_ambient_color
+           del self.ui_cpu_light_position
            
            if self.debug_ui_cam == True:
             self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
