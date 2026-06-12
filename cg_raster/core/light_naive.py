@@ -6,3 +6,10 @@ class LightAmbientNaive:
         self.color = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.intensity = 1.0
         self.position = np.array([0.0, 0.0, 0.0], dtype=np.float32) 
+
+class LightAmbientBlinnPhong:
+    def __init__(self):
+        self.intensity_ambient = np.array([0.2, 0.2, 0.2], dtype=np.float32)
+        self.intensity_diffuse = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        self.intensity_specular = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        self.position = np.array([0.0, 0.0, 0.0], dtype=np.float32)

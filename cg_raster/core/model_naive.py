@@ -16,6 +16,8 @@ class ModelNaive:
         self.vRotation = np.zeros(3, dtype=np.float32)
         self.vScale = np.array([1.0,1.0,1.0], dtype=np.float32)
 
+        self.material = None
+
     # simpler and plain version
     # but not optimized and not effective
     def apply_tsr_naive(
