@@ -6,7 +6,7 @@ import slangpy as spy
 from pathlib import Path
 import numpy as np
 
-class SceneRasterMaterialCamera(core.IScene):
+class SceneRasterMaterialBPColorBasedCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
@@ -186,7 +186,7 @@ class SceneRasterMaterialCamera(core.IScene):
                 in_struct_size=44
             )
 
-            self.model.material = core.MaterialBlinnPhong()
+            self.model.material = core.MaterialBlinnPhongColorBased()
             self.model.material.color_ambient = [0.2, 0.2, 0.2]
             self.model.material.color_diffuse = [0.8, 0.8, 0.8]
             self.model.material.color_specular = [1.0, 1.0, 1.0]
