@@ -6,7 +6,7 @@ import slangpy as spy
 from pathlib import Path
 import numpy as np
 
-class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
+class SceneRasterMaterialPhongTextureBasedCamera(core.IScene):
     def __init__(self):
         super().__init__()
 
@@ -20,8 +20,6 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
         self.ui_cpu_data_camera_position = None
         self.ui_cpu_data_camera_fov = None
         self.ui_cpu_switch_wireframe = None
-        self.ui_cpu_material_color_ambient = None
-        self.ui_cpu_material_color_diffuse = None
         self.ui_cpu_material_color_specular = None
         self.ui_cpu_material_specular_shininess = None
         self.ui_cpu_light_ambient_intensity_ambient = None
@@ -50,7 +48,7 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm6_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm7_cam.slang'
             shader_model_light_name = shaders_path / 'raster' / 'srm2_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             self.program_model_light = self.device.load_program(str(shader_model_light_name), ['mainVertex', 'mainPixel'])
@@ -180,17 +178,21 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
 
             self.model.load_from_memory(
                 device=self.device,
-                vertices=core.model_naive.model_get_sphere_vertices_with_color_normal_uv_attrb(radius=1.0, stacks=16, slices=128),
-                indicies=core.model_naive.model_get_sphere_indices(stacks=16, slices=128),
+                vertices=core.model_naive.model_get_box_vertices_with_color_normal_uv_attrb(),
+                indicies=core.model_naive.model_get_box_indicies(),
                 # pos = 3 * 4, col = 3 * 4, normal = 3 * 4, uv = 2 * 4, so total is 44 bytes for each vertex
                 in_struct_size=44
             )
 
-            self.model.material = core.MaterialBlinnPhongColorBased()
-            self.model.material.color_ambient = [0.2, 0.2, 0.2]
-            self.model.material.color_diffuse = [0.8, 0.8, 0.8]
+            self.model.material = core.MaterialBlinnPhongTextureBased()
+            
+            self.model.material.diffuse_texture_path = textures_path / 'scenes' / 'srm7_cam' / 'diffuse_map.png'
+            self.model.material.specular_texture_path = textures_path / 'scenes' / 'srm7_cam' / 'specular_map.png'
+
             self.model.material.color_specular = [1.0, 1.0, 1.0]
             self.model.material.specular_shininess = 32.0
+
+            self.model.material.load_textures(self.device)
 
             self.light_ambient = core.LightAmbientBlinnPhong()
             self.light_ambient.position = [1.7, 1.370, -1.11]
@@ -212,10 +214,6 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
                 self.model_light.vRotation,
                 self.model_light.vScale
             )
-
-            self.model_texture = core.TextureNaive()
-
-            self.model_texture.load_from_file(device, textures_path / 'wall' / 'brick1.png')
 
             # for texture we need to use sampler that will define how we will sample our texture in shader 
             # (for example, if we want to use linear or point sampling, or how we will handle uv coordinates that are outside of 0-1 range and so on)
@@ -331,26 +329,6 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
                     self.light_ambient.intensity_specular,
                     self._ui_set_dragfloat3_light_ambient_intensity_specular,
                     0.01,
-                    0.0,
-                    1.0
-                )
-
-                self.ui_cpu_material_color_ambient = spy.ui.DragFloat3(
-                    ui_main_window,
-                    'material color ambient',
-                    self.model.material.color_ambient,
-                    self._ui_set_dragfloat3_material_color_ambient,
-                    0.001,
-                    0.0,
-                    1.0
-                )
-
-                self.ui_cpu_material_color_diffuse = spy.ui.DragFloat3(
-                    ui_main_window,
-                    'material color diffuse',
-                    self.model.material.color_diffuse,
-                    self._ui_set_dragfloat3_material_color_diffuse,
-                    0.001,
                     0.0,
                     1.0
                 )
@@ -593,8 +571,7 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
                 cursor.g_mView = self.camera.mView
                 cursor.g_mProjection = self.mProjection
                 cursor.g_vCameraWorldPosition = self.camera.vPosition
-
-                cursor.g_texture = self.model_texture.texture
+                
                 cursor.g_sampler = self.sampler
 
                 cursor.g_lightAmbient = {
@@ -605,8 +582,8 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
                 }
 
                 cursor.g_materialBlinnPhong = {
-                    "color_ambient": self.model.material.color_ambient,
-                    "color_diffuse": self.model.material.color_diffuse,
+                    "texture_diffuse": self.model.material.texture_diffuse.texture,
+                    "texture_specular": self.model.material.texture_specular.texture,
                     "color_specular": self.model.material.color_specular,
                     "specular_shininess": self.model.material.specular_shininess
                 }
@@ -679,6 +656,15 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
            if self.model_light.buffer_index is not None:
                del self.model_light.buffer_index
                self.model_light.buffer_index = None
+
+       if self.model.material is not None:
+           if self.model.material.texture_diffuse is not None:
+                del self.model.material.texture_diffuse
+                self.model.material.texture_diffuse = None
+
+           if self.model.material.texture_specular is not None:
+                del self.model.material.texture_specular
+                self.model.material.texture_specular = None
                
        if self.ui_main_window:
            self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
@@ -690,8 +676,6 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
            self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity_ambient)
            self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity_diffuse)
            self.ui_main_window.remove_child(self.ui_cpu_light_ambient_intensity_specular)
-           self.ui_main_window.remove_child(self.ui_cpu_material_color_ambient)
-           self.ui_main_window.remove_child(self.ui_cpu_material_color_diffuse)
            self.ui_main_window.remove_child(self.ui_cpu_material_color_specular)  
 
            del self.ui_cpu_data_model_position
@@ -703,8 +687,6 @@ class SceneRasterMaterialPhongColorBasedCamera(core.IScene):
            del self.ui_cpu_light_ambient_intensity_ambient
            del self.ui_cpu_light_ambient_intensity_diffuse
            del self.ui_cpu_light_ambient_intensity_specular
-           del self.ui_cpu_material_color_ambient
-           del self.ui_cpu_material_color_diffuse
            del self.ui_cpu_material_color_specular
            
            if self.debug_ui_cam == True:

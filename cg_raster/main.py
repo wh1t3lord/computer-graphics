@@ -52,8 +52,9 @@ class App:
             "3d - static box with texture & transform (rotation no gimbal lock) & camera": scenes.SceneRasterStaticModelNaiveTextureBoxTransformNoGimbalCamera(),
             "3d - ambient lighting": scenes.SceneRasterAmbientLightCamera(),
             "3d - diffuse lighting": scenes.SceneRasterAmbientAndDiffuseLightCamera(),
-            "3d - blinn-phong": scenes.SceneRasterAmbientAndDiffuseAndSpecularLightCamera(),
-            "3d - material blinn-phong color based": scenes.SceneRasterMaterialBPColorBasedCamera()
+            "3d - phong": scenes.SceneRasterAmbientAndDiffuseAndSpecularLightCamera(),
+            "3d - material phong color based": scenes.SceneRasterMaterialPhongColorBasedCamera(),
+            "3d - material phong texture based": scenes.SceneRasterMaterialPhongTextureBasedCamera(),
         }
 
     def __window_callback_resize(
