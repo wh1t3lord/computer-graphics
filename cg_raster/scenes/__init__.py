@@ -13,4 +13,6 @@ from scenes.srm5_1_cam import SceneRasterAmbientAndDiffuseLightCamera
 from scenes.srm5_2_cam import SceneRasterAmbientAndDiffuseAndSpecularLightCamera
 from scenes.srm6_cam import SceneRasterMaterialPhongColorBasedCamera
 from scenes.srm7_cam import SceneRasterMaterialPhongTextureBasedCamera
+from scenes.srm8_cam import SceneRasterDirectionalLightCamera
+from scenes.srm8_1_cam import SceneRasterPointLightCamera
 from core import IScene

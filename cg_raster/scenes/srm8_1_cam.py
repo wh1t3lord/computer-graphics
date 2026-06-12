@@ -1,0 +1,753 @@
+# Author: wh1t3lord
+
+import core
+import random
+import slangpy as spy
+from pathlib import Path
+import numpy as np
+
+class SceneRasterPointLightCamera(core.IScene):
+    def __init__(self):
+        super().__init__()
+
+        self.ui_cpu_data_model_position = None
+        self.ui_cpu_data_model_rotation = None
+        self.ui_cpu_data_model_scale = None
+        self.ui_print_camera_basis = None
+        self.ui_print_camera_orientation_matrix = None
+        self.ui_print_camera_yaw_and_pitch = None
+        self.ui_print_camera_position = None
+        self.ui_cpu_data_camera_position = None
+        self.ui_cpu_data_camera_fov = None
+        self.ui_cpu_switch_wireframe = None
+        self.ui_cpu_material_color_specular = None
+        self.ui_cpu_material_specular_shininess = None
+        self.ui_cpu_light_point_intensity_ambient = None
+        self.ui_cpu_light_point_intensity_diffuse = None
+        self.ui_cpu_light_point_intensity_specular = None
+        self.ui_cpu_light_position = None
+        self.EditorTransformStatus = np.array([False, False, False], dtype=np.bool)
+        self.wireframe_mode = False
+
+        self.depth_texture = None
+
+        self.debug_ui_cam = False
+
+    def _init(
+            self,
+            device : spy.Device, 
+            window : spy.Window,
+            ui : spy.ui.Context,
+            ui_main_window : spy.ui.Window,
+            shaders_path : Path,
+            textures_path : Path,
+            models_path : Path
+        ):
+        print(f'{self.__class__.__name__}: init called')
+
+        self.device = device
+
+        if self.device:
+            shader_name = shaders_path / 'raster' / 'srm8_cam.slang'
+            shader_model_light_name = shaders_path / 'raster' / 'srm2_cam.slang'
+            self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
+            self.program_model_light = self.device.load_program(str(shader_model_light_name), ['mainVertex', 'mainPixel'])
+
+            float_size = spy.DataStruct.type_size(spy.DataStruct.Type.float32)
+            
+            input_layout = self.device.create_input_layout(
+                input_elements=[
+                    {
+                        "semantic_name": "POSITION",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
+                    },
+                    {
+                        "semantic_name": "NORMAL",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        "offset": float_size * 6,
+                    },
+                    {
+                        "semantic_name": "TEXCOORD",
+                        "semantic_index": 0,
+                        "format": spy.Format.rg32_float,
+                        "offset": float_size * 9,
+                    }
+                ],
+                vertex_streams=[{"stride": float_size * 11}],
+            )
+
+            input_layout_model_light = self.device.create_input_layout(
+                input_elements=[
+                    {
+                        "semantic_name": "POSITION",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # don't forget that we need actually specify offsets explicitly!
+                        "offset": 0,
+                    },
+                    {
+                        "semantic_name": "COLOR",
+                        "semantic_index": 0,
+                        "format": spy.Format.rgb32_float,
+                        # float_size * 3 like 4 * 3 because previously we defined that we have position 
+                        # it consists of 3 components that represent x,y,z and each of 4 bytes (or float32 bits, because 1 bytes is 8 bits and 32 bits it is 4 bytes respectively)
+                        # so our next data will be located after position and thus we need to tell driver
+                        # that our color goes after position and it is 12 bytes
+                        "offset": float_size * 3,
+                    },
+                ],
+                vertex_streams=[{"stride": float_size * 6}],
+            )
+
+            self.pipeline = self.device.create_render_pipeline(
+                program=self.program,
+                input_layout=input_layout,
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
+            )
+
+            self.pipeline_wireframe = self.device.create_render_pipeline(
+                program=self.program,
+                input_layout=input_layout,
+                targets=[{"format": spy.Format.rgba32_float}],
+                # because if we have by default is None then we won't see back faces when
+                # rendering our model (box)
+                rasterizer={"fill_mode": spy.FillMode.wireframe, "cull_mode": spy.CullMode.none, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
+            )
+
+            self.pipeline_model_light = self.device.create_render_pipeline(
+                program=self.program_model_light,
+                input_layout=input_layout_model_light,
+                targets=[{"format": spy.Format.rgba32_float}],
+                rasterizer={"cull_mode": spy.CullMode.back, 'front_face': spy.FrontFaceMode.clockwise},
+                depth_stencil={
+                    "format": spy.Format.d32_float_s8_uint,
+                    "depth_test_enable": True,
+                    "depth_write_enable": True,
+                    "depth_func": spy.ComparisonFunc.less,
+                    "stencil_enable": False
+                }
+            )
+
+            self.mProjection : spy.math.float4x4 = spy.math.float4x4()
+
+            self.input = core.Input()
+
+            # let's create our camera based on euler rotations
+            self.camera = core.Camera(self.input)
+
+            self.camera.vPosition[0] = 1.7
+            self.camera.vPosition[1] = 1.2
+            self.camera.vPosition[2] = -2.3
+
+            self.camera.pitch = -15
+            self.camera.yaw = -40
+
+            self.model = core.ModelNaive()
+
+            self.model.load_from_memory(
+                device=self.device,
+                vertices=core.model_naive.model_get_box_vertices_with_color_normal_uv_attrb(),
+                indicies=core.model_naive.model_get_box_indicies(),
+                # pos = 3 * 4, col = 3 * 4, normal = 3 * 4, uv = 2 * 4, so total is 44 bytes for each vertex
+                in_struct_size=44
+            )
+
+            self.model.material = core.MaterialBlinnPhongTextureBased()
+            
+            self.model.material.diffuse_texture_path = textures_path / 'scenes' / 'srm7_cam' / 'diffuse_map.png'
+            self.model.material.specular_texture_path = textures_path / 'scenes' / 'srm7_cam' / 'specular_map.png'
+
+            self.model.material.color_specular = [1.0, 1.0, 1.0]
+            self.model.material.specular_shininess = 32.0
+
+            self.model.material.load_textures(self.device)
+
+            self.light_point = core.LightPointBlinnPhong()
+            self.light_point.position = [0.0, 2.0, 0.0]
+
+            self.model_light = core.ModelNaive()
+
+            self.model_light.load_from_memory(
+                device=self.device,
+                vertices=core.model_naive.model_get_box_vertices_with_override_color_attrb([1.0, 1.0, 1.0]),
+                indicies=core.model_naive.model_get_box_indicies(),
+                in_struct_size=24
+            )
+
+            self.model_light.vScale *= 0.2
+            self.model_light.vPosition = self.light_point.position
+
+            self.model_light.apply_tsr(
+                self.model_light.vPosition,
+                self.model_light.vRotation,
+                self.model_light.vScale
+            )
+
+            # for texture we need to use sampler that will define how we will sample our texture in shader 
+            # (for example, if we want to use linear or point sampling, or how we will handle uv coordinates that are outside of 0-1 range and so on)
+            self.sampler = self.device.create_sampler(
+                {
+                    "address_u": spy.TextureAddressingMode.wrap,
+                    "address_v": spy.TextureAddressingMode.wrap,
+                    "address_w": spy.TextureAddressingMode.wrap,
+                    "min_filter": spy.TextureFilteringMode.linear,
+                    "mag_filter": spy.TextureFilteringMode.linear,
+                    "mip_filter": spy.TextureFilteringMode.linear,
+                }
+            )
+
+            self.binding_cam_pitch = self.input.get_binding_state(core.eInputBindingsType.kCamLookPitch)
+            self.binding_cam_yaw = self.input.get_binding_state(core.eInputBindingsType.kCamLookYaw)
+
+            if window != None:
+                self.swapchain = self.device.create_surface(window)
+                self.swapchain.configure(width=window.width,height=window.height)
+
+                self.ui = ui
+                self.window = window
+
+                self.depth_texture = self.device.create_texture(
+                    type=spy.TextureType.texture_2d,
+                    format=spy.Format.d32_float_s8_uint,
+                    width=window.width,
+                    height=window.height,
+                    usage=spy.TextureUsage.depth_stencil,
+                    memory_type=spy.MemoryType.device_local
+                )
+
+                self.depth_texture_view = self.depth_texture.create_view()
+
+
+            if ui_main_window != None:
+                self.ui_cpu_data_model_position = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model position',
+                    self.model.vPosition[:3],
+                    self._ui_set_dragfloat3_model_position,
+                    0.01,
+                    -100.0,
+                    100.0
+                )
+
+                self.ui_cpu_data_model_rotation = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model rotation',
+                    self.model.vRotation[:3],
+                    self._ui_set_dragfloat3_model_rotation,
+                    0.1,
+                    -360.0,
+                    360.0
+                )
+
+                self.ui_cpu_data_model_scale = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'model scale',
+                    self.model.vScale[:3],
+                    self._ui_set_dragfloat3_model_scale,
+                    0.01,
+                    0.0,
+                    10.0
+                )
+
+                self.ui_print_camera_position = spy.ui.Text(
+                    ui_main_window,
+                    ''
+                )
+
+                self.ui_cpu_switch_wireframe = spy.ui.CheckBox(
+                    ui_main_window,
+                    label='Wireframe',
+                    value=self.wireframe_mode,
+                    callback=self._ui_set_checkbox_wireframe
+                )
+
+                self.ui_cpu_light_position = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'point light position',
+                    self.light_directional.direction,
+                    self._ui_set_dragfloat3_point_light_position,
+                    0.01,
+                    -100.0,
+                    100.0
+                )
+
+                self.ui_cpu_light_direction_intensity_ambient = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'point light intensity ambient',
+                    self.light_directional.intensity_ambient,
+                    self._ui_set_dragfloat3_light_point_intensity_ambient,
+                    0.01,
+                    0.0,
+                    1.0
+                )
+
+                self.ui_cpu_light_direction_intensity_diffuse = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'point light intensity diffuse',
+                    self.light_directional.intensity_diffuse,
+                    self._ui_set_dragfloat3_light_point_intensity_diffuse,
+                    0.01,
+                    0.0,
+                    1.0
+                )
+
+                self.ui_cpu_light_direction_intensity_specular = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'point light intensity specular',
+                    self.light_directional.intensity_specular,
+                    self._ui_set_dragfloat3_light_point_intensity_specular,
+                    0.01,
+                    0.0,
+                    1.0
+                )
+
+                self.ui_cpu_material_color_specular = spy.ui.DragFloat3(
+                    ui_main_window,
+                    'material color specular',
+                    self.model.material.color_specular,
+                    self._ui_set_dragfloat3_material_color_specular,
+                    0.001,
+                    0.0,
+                    1.0
+                )
+
+                self.ui_cpu_material_specular_shininess = spy.ui.DragFloat(
+                    ui_main_window,
+                    'material specular shininess',
+                    self.model.material.specular_shininess,
+                    self._ui_set_dragfloat_material_specular_shininess,
+                    0.1,
+                    1.0,
+                    256.0
+                )
+
+                if self.debug_ui_cam == True:
+                    self.ui_cpu_data_camera_position = spy.ui.DragFloat3(
+                        ui_main_window,
+                        'camera position',
+                        self.camera.vPosition,
+                        self._ui_set_dragfloat3_camera_position,
+                        0.01,
+                        -100.0,
+                        100.0
+                    )
+
+                    self.ui_cpu_data_camera_fov = spy.ui.DragFloat(
+                        ui_main_window,
+                        'camera fov (degrees)',
+                        self.camera.fov,
+                        self._ui_set_dragfloat_camera_fov,
+                        0.01,
+                        10.0,
+                        120.0
+                    )
+
+                    self.ui_print_camera_basis = spy.ui.Text(
+                        ui_main_window,
+                        r"""
+    Camera basis:
+
+    +Y (Up)
+    |
+    |    +Z (Forward)
+    |   /
+    |  /
+    | /
+    +-------- +X (Right)
+                        """
+                    )
+
+                    self.ui_print_camera_yaw_and_pitch = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
+
+                    self.ui_print_camera_orientation_matrix = spy.ui.Text(
+                        ui_main_window,
+                        ''
+                    )
+
+
+
+                self.ui_main_window = ui_main_window
+
+    def _ui_set_dragfloat3_camera_position(self, value):
+        self.camera.vPosition = value
+
+    def _ui_set_dragfloat_camera_fov(self, value):
+        self.camera.fov = value 
+
+    def _ui_set_dragfloat3_model_position(self, value):
+        self.model.vPosition[:3] = value
+        self.EditorTransformStatus[0] = True
+
+    def _ui_set_dragfloat3_model_rotation(self, value):
+        self.model.vRotation[:3] = value
+        self.EditorTransformStatus[1] = True
+
+    def _ui_set_dragfloat3_model_scale(self, value):
+        self.model.vScale[:3] = value
+        self.EditorTransformStatus[2] = True
+
+    def _ui_set_checkbox_wireframe(self, value):
+        self.wireframe_mode = value
+
+    def _ui_set_dragfloat3_point_light_position(self, value):
+        self.light_point.position = value
+        self.model_light.vPosition = value
+
+        self.model_light.apply_tsr(
+            self.model_light.vPosition,
+            self.model_light.vRotation,
+            self.model_light.vScale
+        )
+
+    def _ui_set_dragfloat3_light_point_intensity_ambient(self, value):
+        self.light_point.intensity_ambient = value
+
+    def _ui_set_dragfloat3_light_point_intensity_diffuse(self, value):
+        self.light_point.intensity_diffuse = value
+
+    def _ui_set_dragfloat3_light_point_intensity_specular(self, value):
+        self.light_point.intensity_specular = value
+
+    def _ui_set_dragfloat3_material_color_ambient(self, value):
+        self.model.material.color_ambient = value
+
+    def _ui_set_dragfloat3_material_color_diffuse(self, value):
+        self.model.material.color_diffuse = value
+
+    def _ui_set_dragfloat3_material_color_specular(self, value):
+        self.model.material.color_specular = value
+
+    def _ui_set_dragfloat_material_specular_shininess(self, value):
+        self.model.material.specular_shininess = value
+
+    def _update(
+            self,
+            dt : spy.math.float1
+        ):
+        if self.camera:
+
+            if self.window.cursor_mode != spy.CursorMode.disabled:
+                self.camera.can_update_input = False
+            else:
+                self.camera.can_update_input = True
+
+
+            if self.camera.can_update_input:
+                if self.ui_cpu_data_camera_position is not None and self.debug_ui_cam == True:
+                    # Because binding is not direct and slanpy creates underlying temp copy variable of binded value argument for DragFloat3
+                    # So we need to emulate 'reference' updating if a such binding model would be provided by slangpy library
+                    self.ui_cpu_data_camera_position.value = self.camera.vPosition
+
+            if self.ui_print_camera_position is not None:
+                self.ui_print_camera_position.text = f'Cam pos: {self.camera.vPosition[0]:.3f} {self.camera.vPosition[1]:.3f} {self.camera.vPosition[2]:.3f}'
+
+            self.camera.update(dt)
+
+            if self.ui_print_camera_orientation_matrix is not None and self.debug_ui_cam == True:
+                self.ui_print_camera_orientation_matrix.text = f'[0] = {self.camera.mView[0][0]:.3f} {self.camera.mView[0][1]:.3f} {self.camera.mView[0][2]:.3f} {self.camera.mView[0][3]:.3f} (X | Right)\n[1] = {self.camera.mView[1][0]:.3f} {self.camera.mView[1][1]:.3f} {self.camera.mView[1][2]:.3f} {self.camera.mView[1][3]:.3f}  (Y | Up)\n[2] = {self.camera.mView[2][0]:.3f} {self.camera.mView[2][1]:.3f} {self.camera.mView[2][2]:.3f} {self.camera.mView[2][3]:.3f} (Z | Forward)\n[3] = {self.camera.mView[3][0]:.3f} {self.camera.mView[3][1]:.3f} {self.camera.mView[3][2]:.3f} {self.camera.mView[3][3]:.3f}'
+
+            if self.ui_print_camera_yaw_and_pitch is not None and self.debug_ui_cam == True:
+                self.ui_print_camera_yaw_and_pitch.text = f'yaw={self.camera.yaw:.3f} pitch={self.camera.pitch:.3f}'
+
+
+        if self.input:
+            self.input.update()
+
+
+        if self.model is not None:
+            if self.EditorTransformStatus[0] == True or self.EditorTransformStatus[1] == True or self.EditorTransformStatus[2] == True:
+                
+                self.model.apply_tsr(
+                    self.model.vPosition,
+                    self.model.vRotation,
+                    self.model.vScale
+                )
+
+                self.EditorTransformStatus = np.array([False,False,False], dtype=np.bool)
+
+    def _render(
+            self
+        ):
+        if self.device and self.swapchain:
+            command_encoder : spy.CommandEncoder = self.device.create_command_encoder()
+            texture_surface : spy.Texture = self.swapchain.acquire_next_image()
+
+            if not texture_surface:
+                return
+            
+            # drawing our triangle
+
+            render_target_view = texture_surface.create_view({})
+         #   command_encoder.clear_texture_float(texture_surface, clear_value=[0,0,0,1])
+                
+            with command_encoder.begin_render_pass(
+                {
+                    "color_attachments": [
+                        {"view": render_target_view}
+                    ],
+                    "depth_stencil_attachment": {
+                        "view": self.depth_texture_view,
+                        "depth_load_op": spy.LoadOp.clear,
+                        "depth_store_op": spy.StoreOp.dont_care,
+                        "depth_clear_value": 1.0,
+                        "stencil_load_op": spy.LoadOp.clear,
+                        "stencil_store_op": spy.StoreOp.dont_care,
+                        "stencil_clear_value": 0
+                    }
+                }) as rp:
+                
+                self.mProjection = spy.math.perspective(
+                    spy.math.radians(self.camera.fov),
+                    texture_surface.width / texture_surface.height,
+                    0.1,
+                    100.0
+                )
+
+                shader_object = rp.bind_pipeline(self.pipeline_model_light)
+
+                cursor = spy.ShaderCursor(shader_object)
+
+                cursor.g_mModel = self.model_light.mModel
+                cursor.g_mView = self.camera.mView
+                cursor.g_mProjection = self.mProjection
+
+                rp.set_render_state(
+                        {
+                            "viewports": [spy.Viewport.from_size(texture_surface.width, texture_surface.height)],
+                            "scissor_rects": [
+                                spy.ScissorRect.from_size(texture_surface.width, texture_surface.height)
+                            ],
+                            "vertex_buffers": [self.model_light.buffer_vertex],
+                            "index_buffer": self.model_light.buffer_index,
+                            "index_format": spy.IndexFormat.uint32,
+                        }
+                    )
+                rp.draw_indexed({"vertex_count": self.model_light.index_count})
+
+
+                if self.wireframe_mode == False:
+                    shader_object = rp.bind_pipeline(self.pipeline)
+                else:
+                    shader_object = rp.bind_pipeline(self.pipeline_wireframe)
+
+                cursor = spy.ShaderCursor(shader_object)
+
+                cursor.g_mModel = self.model.mModel
+                cursor.g_mView = self.camera.mView
+                cursor.g_mProjection = self.mProjection
+                cursor.g_vCameraWorldPosition = self.camera.vPosition
+                
+                cursor.g_sampler = self.sampler
+
+                cursor.g_lightDirectional = {
+                    "intensity_ambient": self.light_directional.intensity_ambient,
+                    "intensity_diffuse": self.light_directional.intensity_diffuse,
+                    "intensity_specular": self.light_directional.intensity_specular,
+                    "direction": self.light_directional.direction
+                }
+
+                cursor.g_materialBlinnPhong = {
+                    "texture_diffuse": self.model.material.texture_diffuse.texture,
+                    "texture_specular": self.model.material.texture_specular.texture,
+                    "color_specular": self.model.material.color_specular,
+                    "specular_shininess": self.model.material.specular_shininess
+                }
+
+                rp.set_render_state(
+                        {
+                            "viewports": [spy.Viewport.from_size(texture_surface.width, texture_surface.height)],
+                            "scissor_rects": [
+                                spy.ScissorRect.from_size(texture_surface.width, texture_surface.height)
+                            ],
+                            "vertex_buffers": [self.model.buffer_vertex],
+                            "index_buffer": self.model.buffer_index,
+                            "index_format": spy.IndexFormat.uint32,
+                        }
+                    )
+                rp.draw_indexed({"vertex_count": self.model.index_count})
+
+            # end of drawing our triangle
+
+            if self.ui:
+                self.ui.new_frame(width=texture_surface.width, height=texture_surface.height)
+                self.ui.render(texture=texture_surface, command_encoder=command_encoder)
+
+            self.device.submit_command_buffer(command_encoder.finish())
+            del texture_surface
+
+            self.swapchain.present()
+
+    def _shutdown(
+            self
+        ):
+       if self.input:
+           del self.input
+           self.input = None
+
+       if self.camera:
+           del self.camera
+           self.camera = None
+
+       # we should destroy our resources
+       if self.device:
+           # sync point between GPU execution (wait until all operations on GPU is completed and we are ready to proceed) and CPU
+           self.device.wait()
+           self.swapchain.unconfigure()
+
+           del self.depth_texture_view
+           del self.depth_texture
+
+           del self.swapchain
+           del self.program
+           del self.program_model_light
+           del self.pipeline
+           del self.pipeline_wireframe
+           del self.pipeline_model_light
+
+       if self.model is not None:
+           if self.model.buffer_vertex is not None:
+               del self.model.buffer_vertex
+               self.model.buffer_vertex = None
+
+           if self.model.buffer_index is not None:
+               del self.model.buffer_index
+               self.model.buffer_index = None
+
+       if self.model_light is not None:
+           if self.model_light.buffer_vertex is not None:
+               del self.model_light.buffer_vertex
+               self.model_light.buffer_vertex = None
+
+           if self.model_light.buffer_index is not None:
+               del self.model_light.buffer_index
+               self.model_light.buffer_index = None
+
+       if self.model.material is not None:
+           if self.model.material.texture_diffuse is not None:
+                del self.model.material.texture_diffuse
+                self.model.material.texture_diffuse = None
+
+           if self.model.material.texture_specular is not None:
+                del self.model.material.texture_specular
+                self.model.material.texture_specular = None
+               
+       if self.ui_main_window:
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_position)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_rotation)
+           self.ui_main_window.remove_child(self.ui_cpu_data_model_scale)
+           self.ui_main_window.remove_child(self.ui_print_camera_position)
+           self.ui_main_window.remove_child(self.ui_cpu_switch_wireframe)
+           self.ui_main_window.remove_child(self.ui_cpu_light_direction)  
+           self.ui_main_window.remove_child(self.ui_cpu_light_direction_intensity_ambient)
+           self.ui_main_window.remove_child(self.ui_cpu_light_direction_intensity_diffuse)
+           self.ui_main_window.remove_child(self.ui_cpu_light_direction_intensity_specular)
+           self.ui_main_window.remove_child(self.ui_cpu_material_color_specular)  
+
+           del self.ui_cpu_data_model_position
+           del self.ui_cpu_data_model_rotation
+           del self.ui_cpu_data_model_scale
+           del self.ui_print_camera_position
+           del self.ui_cpu_switch_wireframe
+           del self.ui_cpu_light_direction
+           del self.ui_cpu_light_direction_intensity_ambient
+           del self.ui_cpu_light_direction_intensity_diffuse
+           del self.ui_cpu_light_direction_intensity_specular
+           del self.ui_cpu_material_color_specular
+           
+           if self.debug_ui_cam == True:
+            self.ui_main_window.remove_child(self.ui_print_camera_orientation_matrix)
+            self.ui_main_window.remove_child(self.ui_cpu_data_camera_position)
+            self.ui_main_window.remove_child(self.ui_cpu_data_camera_fov)
+            self.ui_main_window.remove_child(self.ui_print_camera_yaw_and_pitch)
+            self.ui_main_window.remove_child(self.ui_print_camera_basis)
+
+            del self.ui_print_camera_orientation_matrix
+            del self.ui_cpu_data_camera_position
+            del self.ui_cpu_data_camera_fov
+            del self.ui_print_camera_yaw_and_pitch
+            del self.ui_print_camera_basis
+
+    def _on_resize(
+            self,
+            width : int,
+            height : int
+        ):
+        if self.device:
+            self.device.wait()
+
+            if self.depth_texture is not None:
+                del self.depth_texture
+
+            if self.depth_texture_view is not None:
+                del self.depth_texture_view
+
+            self.depth_texture = self.device.create_texture(
+                type=spy.TextureType.texture_2d,
+                format=spy.Format.d32_float_s8_uint,
+                width=width,
+                height=height,
+                usage=spy.TextureUsage.depth_stencil,
+                memory_type=spy.MemoryType.device_local
+            )
+
+            self.depth_texture_view = self.depth_texture.create_view()
+
+        if width > 0 and height > 0:
+            self.swapchain.configure(width=width,height=height)
+        else:
+            self.swapchain.unconfigure()
+
+    def _on_mouse_event(
+            self,
+            event : spy.MouseEvent
+        ):
+        if self.input:
+            if event:
+                self.input.update_mouse(event)
+
+                # we want to disable and try to use raw mouse cursor handling
+                self.input.update_capture_mouse(event, self.window)
+
+
+    def _on_keyboard_event(
+            self,
+            event : spy.KeyboardEvent
+    ):
+        if self.input:
+            if event:
+                self.input.update_keyboard(event)

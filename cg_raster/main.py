@@ -55,6 +55,8 @@ class App:
             "3d - phong": scenes.SceneRasterAmbientAndDiffuseAndSpecularLightCamera(),
             "3d - material phong color based": scenes.SceneRasterMaterialPhongColorBasedCamera(),
             "3d - material phong texture based": scenes.SceneRasterMaterialPhongTextureBasedCamera(),
+            "3d - directional lighting": scenes.SceneRasterDirectionalLightCamera(),
+            "3d - point lighting": scenes.SceneRasterPointLightCamera(),
         }
 
     def __window_callback_resize(
