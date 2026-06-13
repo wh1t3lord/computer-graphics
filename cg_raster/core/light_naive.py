@@ -28,6 +28,7 @@ class LightPointBlinnPhong:
         self.intensity_specular = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.position = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
+        # for attenuation calculation
         self.constant = 1.0
         self.linear = 0.09
         self.quadratic = 0.032

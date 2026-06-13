@@ -48,7 +48,7 @@ class SceneRasterPointLightCamera(core.IScene):
         self.device = device
 
         if self.device:
-            shader_name = shaders_path / 'raster' / 'srm8_cam.slang'
+            shader_name = shaders_path / 'raster' / 'srm8_1_cam.slang'
             shader_model_light_name = shaders_path / 'raster' / 'srm2_cam.slang'
             self.program = self.device.load_program(str(shader_name), ['mainVertex', 'mainPixel'])
             self.program_model_light = self.device.load_program(str(shader_model_light_name), ['mainVertex', 'mainPixel'])
@@ -296,7 +296,7 @@ class SceneRasterPointLightCamera(core.IScene):
                 self.ui_cpu_light_position = spy.ui.DragFloat3(
                     ui_main_window,
                     'point light position',
-                    self.light_directional.direction,
+                    self.light_point.position,
                     self._ui_set_dragfloat3_point_light_position,
                     0.01,
                     -100.0,
@@ -306,7 +306,7 @@ class SceneRasterPointLightCamera(core.IScene):
                 self.ui_cpu_light_direction_intensity_ambient = spy.ui.DragFloat3(
                     ui_main_window,
                     'point light intensity ambient',
-                    self.light_directional.intensity_ambient,
+                    self.light_point.intensity_ambient,
                     self._ui_set_dragfloat3_light_point_intensity_ambient,
                     0.01,
                     0.0,
@@ -316,7 +316,7 @@ class SceneRasterPointLightCamera(core.IScene):
                 self.ui_cpu_light_direction_intensity_diffuse = spy.ui.DragFloat3(
                     ui_main_window,
                     'point light intensity diffuse',
-                    self.light_directional.intensity_diffuse,
+                    self.light_point.intensity_diffuse,
                     self._ui_set_dragfloat3_light_point_intensity_diffuse,
                     0.01,
                     0.0,
@@ -326,7 +326,7 @@ class SceneRasterPointLightCamera(core.IScene):
                 self.ui_cpu_light_direction_intensity_specular = spy.ui.DragFloat3(
                     ui_main_window,
                     'point light intensity specular',
-                    self.light_directional.intensity_specular,
+                    self.light_point.intensity_specular,
                     self._ui_set_dragfloat3_light_point_intensity_specular,
                     0.01,
                     0.0,
@@ -574,11 +574,12 @@ class SceneRasterPointLightCamera(core.IScene):
                 
                 cursor.g_sampler = self.sampler
 
-                cursor.g_lightDirectional = {
-                    "intensity_ambient": self.light_directional.intensity_ambient,
-                    "intensity_diffuse": self.light_directional.intensity_diffuse,
-                    "intensity_specular": self.light_directional.intensity_specular,
-                    "direction": self.light_directional.direction
+                cursor.g_lightPoint = {
+                    "intensity_ambient": self.light_point.intensity_ambient,
+                    "intensity_diffuse": self.light_point.intensity_diffuse,
+                    "intensity_specular": self.light_point.intensity_specular,
+                    "worldPosition": self.light_point.position,
+                    "constants": np.array([self.light_point.constant, self.light_point.linear, self.light_point.quadratic], dtype=np.float32)
                 }
 
                 cursor.g_materialBlinnPhong = {
